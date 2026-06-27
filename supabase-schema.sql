@@ -5,14 +5,28 @@ NOTIFY pgrst, 'reload schema';
 -- 1. Profiles Table (extends auth.users)
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade not null primary key,
+  username text unique,
   full_name text,
   avatar_url text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- Ensure columns exist if table was already created
+alter table public.profiles add column if not exists username text;
+alter table public.profiles drop constraint if exists profiles_username_key;
+alter table public.profiles add constraint profiles_username_key unique (username);
 alter table public.profiles add column if not exists full_name text;
 alter table public.profiles add column if not exists avatar_url text;
+alter table public.profiles add column if not exists bio text;
+alter table public.profiles add column if not exists industry text;
+alter table public.profiles add column if not exists country text;
+alter table public.profiles add column if not exists learning_goal text;
+alter table public.profiles add column if not exists phone text;
+alter table public.profiles add column if not exists timezone text;
+alter table public.profiles add column if not exists is_public boolean default true;
+alter table public.profiles add column if not exists linkedin text;
+alter table public.profiles add column if not exists twitter text;
+alter table public.profiles add column if not exists website text;
 alter table public.profiles enable row level security;
 
 -- Profiles Policies (drop if exist to avoid errors, then create)

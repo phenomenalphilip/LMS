@@ -12,6 +12,7 @@ import { Billing } from './pages/Billing';
 import { Portfolio } from './pages/Portfolio';
 import { Auth } from './pages/Auth';
 import { Landing } from './pages/Landing';
+import { PublicPortfolio } from './pages/PublicPortfolio';
 import { AuthProvider } from './contexts/AuthContext';
 import { CourseProvider } from './contexts/CourseContext';
 import { StudioPage } from './pages/Studio';
@@ -24,6 +25,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Auth />} />
+            <Route path="/p/:username" element={<PublicPortfolio />} />
             <Route path="/studio/*" element={<StudioPage />} />
             <Route path="/app" element={<DashboardLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />

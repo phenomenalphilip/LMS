@@ -5,9 +5,30 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getData as getCountries } from 'country-list';
 
+const industriesList = [
+  "Finance & Banking",
+  "Oil & Gas",
+  "Technology / ICT",
+  "Healthcare & Medicine",
+  "Law & Legal Services",
+  "Education & Academia",
+  "Engineering & Construction",
+  "Telecoms",
+  "Agriculture & Agribusiness",
+  "Creative, Media & Entertainment",
+  "Government & Public Service",
+  "Students (Higher Education)",
+  "NGO / International Development",
+  "Real Estate & Property Development",
+  "Logistics, Trade & Supply Chain"
+];
+
 export function Account() {
   const { user } = useAuth();
   
+  const [username, setUsername] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   
@@ -36,11 +57,45 @@ export function Account() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState('');
 
-  const timezones = Intl.supportedValuesOf('timeZone');
+  const timezones = Intl.supportedValuesOf('timeZone').map(tz => {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'shortOffset'
+    });
+    const parts = formatter.formatToParts(new Date());
+    const offsetPart = parts.find(p => p.type === 'timeZoneName')?.value || 'GMT+0';
+    
+    let offsetNum = 0;
+    const match = offsetPart.match(/GMT([+-])(\d+)(?::(\d+))?/);
+    if (match) {
+      const sign = match[1] === '+' ? 1 : -1;
+      const hours = parseInt(match[2], 10);
+      const minutes = match[3] ? parseInt(match[3], 10) : 0;
+      offsetNum = sign * (hours + minutes / 60);
+    } else if (offsetPart === 'GMT') {
+      offsetNum = 0;
+    }
+
+    const tzParts = tz.split('/');
+    const region = tzParts[0];
+    const city = tzParts[tzParts.length - 1].replace(/_/g, ' ');
+    let formattedName = `${city} (${region})`;
+    if (tzParts.length === 1) {
+      formattedName = tz;
+    }
+
+    return {
+      id: tz,
+      label: `${formattedName} ${offsetPart.replace('GMT', 'GMT')}`,
+      offset: offsetNum
+    };
+  }).sort((a, b) => a.offset - b.offset);
+
   const countries = getCountries();
 
   useEffect(() => {
     if (user) {
+      setUsername(user.user_metadata?.username || '');
       setFullName(user.user_metadata?.full_name || '');
       setEmail(user.email || '');
       setBio(user.user_metadata?.bio || '');
@@ -53,15 +108,70 @@ export function Account() {
       setLinkedin(user.user_metadata?.linkedin || '');
       setTwitter(user.user_metadata?.twitter || '');
       setWebsite(user.user_metadata?.website || '');
-      setAvatarUrl(user.user_metadata?.avatar_url || '');
+      
+      // Fetch avatar from profiles table to avoid hitting JWT size limits
+      supabase.from('profiles').select('avatar_url').eq('id', user.id).single().then(({ data }) => {
+        if (data?.avatar_url) {
+          setAvatarUrl(data.avatar_url);
+        } else {
+          setAvatarUrl(user.user_metadata?.avatar_url || '');
+        }
+      });
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!username) {
+      setUsernameError('');
+      return;
+    }
+    if (!/^[a-zA-Z0-9]+$/.test(username)) {
+      setUsernameError('Only letters and numbers are allowed');
+      return;
+    }
+    if (username === user?.user_metadata?.username) {
+      setUsernameError('');
+      return;
+    }
+
+    const checkAvailability = async () => {
+      setCheckingUsername(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', username)
+          .single();
+          
+        if (data && data.id !== user?.id) {
+          setUsernameError('Username unavailable');
+        } else {
+          setUsernameError('');
+        }
+      } catch (e) {
+        setUsernameError('');
+      } finally {
+        setCheckingUsername(false);
+      }
+    };
+    
+    const timeoutId = setTimeout(checkAvailability, 500);
+    return () => clearTimeout(timeoutId);
+  }, [username, user]);
+
   const handleSaveProfile = async () => {
+    if (usernameError) {
+      setProfileMessage('Please resolve username errors before saving.');
+      return;
+    }
     setSavingProfile(true);
     setProfileMessage('');
-    const { error } = await supabase.auth.updateUser({
-      data: {
+    
+    // Save to profiles table
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        username,
         full_name: fullName,
         bio,
         industry,
@@ -72,13 +182,40 @@ export function Account() {
         is_public: isPublic,
         linkedin,
         twitter,
-        website,
-        avatar_url: avatarUrl
+        website
+      })
+      .eq('id', user?.id);
+      
+    if (profileError) {
+      if (profileError.code === '23505') {
+        setProfileMessage('Username is already taken.');
+      } else {
+        setProfileMessage('Error saving profile to database');
+      }
+      setSavingProfile(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        username,
+        full_name: fullName,
+        bio,
+        industry,
+        country,
+        learning_goal: learningGoal,
+        phone,
+        timezone,
+        is_public: isPublic,
+        linkedin,
+        twitter,
+        website
       }
     });
+    
     setSavingProfile(false);
     if (error) {
-      setProfileMessage('Error saving profile');
+      setProfileMessage('Error updating auth details');
     } else {
       setProfileMessage('Profile saved successfully');
     }
@@ -109,24 +246,50 @@ export function Account() {
       }
 
       const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user?.id}-${Math.random()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       
-      setAvatarUrl(data.publicUrl);
+      const resizeImage = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 200;
+              const MAX_HEIGHT = 200;
+              let width = img.width;
+              let height = img.height;
+
+              if (width > height) {
+                if (width > MAX_WIDTH) {
+                  height *= MAX_WIDTH / width;
+                  width = MAX_WIDTH;
+                }
+              } else {
+                if (height > MAX_HEIGHT) {
+                  width *= MAX_HEIGHT / height;
+                  height = MAX_HEIGHT;
+                }
+              }
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.onerror = (e) => reject(e);
+          };
+          reader.onerror = (e) => reject(e);
+        });
+      };
+
+      const base64Avatar = await resizeImage(file);
       
-      await supabase.auth.updateUser({
-        data: { avatar_url: data.publicUrl }
-      });
+      setAvatarUrl(base64Avatar);
+      
+      const { error: profileError } = await supabase.from('profiles').update({ avatar_url: base64Avatar }).eq('id', user?.id);
+      if (profileError) throw profileError;
 
     } catch (error: any) {
       alert(error.message);
@@ -194,7 +357,19 @@ export function Account() {
 
               {/* Basic Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
+                <div>
+                  <label className="block text-xs font-medium text-white/60 mb-1">Username (Public Profile)</label>
+                  <input 
+                    type="text" 
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    placeholder="johndoe"
+                    className={`w-full bg-white/5 border ${usernameError ? 'border-red-500' : 'border-white/10'} rounded-lg py-2.5 px-4 text-sm text-white focus:outline-none focus:border-white/30 transition-colors`}
+                  />
+                  {usernameError && <p className="text-xs text-red-500 mt-1">{usernameError}</p>}
+                  {checkingUsername && <p className="text-xs text-white/40 mt-1">Checking availability...</p>}
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-white/60 mb-1">Full Name</label>
                   <input 
                     type="text" 
@@ -220,12 +395,16 @@ export function Account() {
 
                 <div>
                   <label className="block text-xs font-medium text-white/60 mb-1">Industry</label>
-                  <input 
-                    type="text" 
+                  <select 
                     value={industry}
                     onChange={e => setIndustry(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
-                  />
+                    className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white focus:outline-none focus:border-white/30 transition-colors appearance-none"
+                  >
+                    <option value="" disabled className="bg-[#111113] text-white/50">Select your industry</option>
+                    {industriesList.map(ind => (
+                      <option key={ind} value={ind} className="bg-[#111113]">{ind}</option>
+                    ))}
+                  </select>
                 </div>
                 
                 <div>
@@ -243,7 +422,7 @@ export function Account() {
                 </div>
                 
                 <div>
-                  <label className="block text-xs font-medium text-white/60 mb-1">Learning goal</label>
+                  <label className="block text-xs font-medium text-white/60 mb-1">Career goal</label>
                   <input 
                     type="text" 
                     value={learningGoal}
@@ -271,7 +450,7 @@ export function Account() {
                   >
                     <option value="" disabled className="bg-[#111113] text-white/50">Select your timezone</option>
                     {timezones.map(tz => (
-                      <option key={tz} value={tz} className="bg-[#111113]">{tz}</option>
+                      <option key={tz.id} value={tz.id} className="bg-[#111113]">{tz.label}</option>
                     ))}
                   </select>
                 </div>
@@ -403,7 +582,7 @@ export function Account() {
         </motion.div>
 
         {/* Global Save Button */}
-        <div className="sticky bottom-8 flex items-center justify-end gap-4 p-4 bg-[#09090b]/80 backdrop-blur-md rounded-2xl border border-white/10">
+        <div className="flex items-center justify-end gap-4 p-4 mt-8 bg-white/5 rounded-2xl border border-white/10">
           {profileMessage && <span className="text-sm text-white/60">{profileMessage}</span>}
           <button 
             onClick={handleSaveProfile}

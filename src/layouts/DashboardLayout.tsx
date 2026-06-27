@@ -9,7 +9,22 @@ export function DashboardLayout() {
   const { user, loading, signOut } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (user) {
+      import('../lib/supabase').then(({ supabase }) => {
+        supabase.from('profiles').select('avatar_url').eq('id', user.id).single().then(({ data }) => {
+          if (data?.avatar_url) {
+            setAvatarUrl(data.avatar_url);
+          } else if (user.user_metadata?.avatar_url) {
+            setAvatarUrl(user.user_metadata.avatar_url);
+          }
+        });
+      });
+    }
+  }, [user]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -122,8 +137,8 @@ export function DashboardLayout() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-10 h-10 rounded-full border border-white/10 bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold shrink-0 overflow-hidden">
-                    {user.user_metadata?.avatar_url ? (
-                      <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
                       user.user_metadata?.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'
                     )}
