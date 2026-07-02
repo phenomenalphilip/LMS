@@ -182,7 +182,7 @@ export function Auth() {
             </h2>
             <p className="text-white/50 text-sm mb-6">
               {view === 'login' && 'Enter your credentials to access your courses.'}
-              {view === 'signup' && 'Start your journey with Leaders Court Academy.'}
+              {view === 'signup' && 'Start your journey with PDS Academy.'}
               {view === 'forgot_password' && 'Enter your email address and we will send you a link to reset your password.'}
             </p>
 

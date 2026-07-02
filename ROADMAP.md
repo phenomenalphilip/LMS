@@ -1,4 +1,4 @@
-# Leaders Court Academy - Implementation Roadmap
+# PDS Academy - Implementation Roadmap
 
 ## Completed Phases
 - [x] UI/UX Design System
@@ -22,10 +22,10 @@
 * **Goal**: Connect the beautiful UI we built to the real data sources.
 * **Tasks**: Install Supabase & Sanity SDKs in our codebase, replace mock data with live GROQ queries, and implement protected routes tied to real user sessions.
 
-### Phase 4: Payment Gateway & Webhooks (Paystack)
+### [x] Phase 4: Payment Gateway & Webhooks (Paystack)
 * **Goal**: Process NGN/USD transactions and automate course access.
 * **Tasks**: Set up Paystack API keys, build backend webhook listeners (using Express/Next.js/Edge functions) to listen for `charge.success`, and programmatically insert a 6-month enrollment record into Supabase upon payment.
 
 ### Phase 5: Domain & Deployment (Vercel)
-* **Goal**: Go live on `academy.leaderscourt.com`.
+* **Goal**: Go live on `academy.pdsacademy.com`.
 * **Tasks**: Deploy frontend/backend to Vercel, attach the custom domain, ensure SSL certificates are active, and test the end-to-end flow.

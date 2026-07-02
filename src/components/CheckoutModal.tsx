@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { usePaystackPayment } from 'react-paystack';
+import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -23,40 +25,112 @@ export function CheckoutModal({ isOpen, onClose, course }: CheckoutModalProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const handleCheckout = async () => {
+  const paystackConfig = {
+    reference: (new Date()).getTime().toString(),
+    email: user?.email || '',
+    amount: (course?.price?.ngn || 0) * 100, // Amount is in the lowest currency unit
+    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
+    currency: 'NGN',
+    metadata: {
+      custom_fields: [
+        {
+          display_name: "Course ID",
+          variable_name: "course_id",
+          value: course?.id || "",
+        },
+        {
+          display_name: "User ID",
+          variable_name: "user_id",
+          value: user?.id || "",
+        }
+      ],
+      user_id: user?.id || "",
+      course_id: course?.id || ""
+    }
+  };
+
+  const flutterwaveConfig = {
+    public_key: import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY || '',
+    tx_ref: (new Date()).getTime().toString(),
+    amount: course?.price?.usd || 0,
+    currency: 'USD',
+    payment_options: 'card,mobilemoney,ussd',
+    customer: {
+      email: user?.email || '',
+      name: user?.user_metadata?.full_name || '',
+      phone_number: '',
+    },
+    customizations: {
+      title: 'PDS Academy',
+      description: `Payment for ${course?.title}`,
+      logo: 'https://st2.depositphotos.com/4403291/7418/v/450/depositphotos_74189661-stock-illustration-online-shop-log.jpg',
+    },
+    meta: {
+      user_id: user?.id || "",
+      course_id: course?.id || ""
+    }
+  };
+
+  const initializePaystack = usePaystackPayment(paystackConfig);
+  const handleFlutterwavePayment = useFlutterwave(flutterwaveConfig);
+
+  const handleSuccess = (reference: any) => {
+    // The backend webhook will handle inserting the enrollment.
+    // For immediate UI feedback, we'll also insert it here, Supabase RLS permitting,
+    // or just show success and rely on webhook. Let's do optimistic success state.
+    setIsProcessing(false);
+    setIsSuccess(true);
+    
+    // We should do a quick insert as fallback just in case webhook is delayed.
+    const expiresAt = new Date();
+    expiresAt.setMonth(expiresAt.getMonth() + 6);
+    supabase.from('enrollments').insert({
+      user_id: user!.id,
+      course_id: course?.id || '',
+      progress: 0,
+      expires_at: expiresAt.toISOString(),
+    }).then(({ error }) => {
+      if (error) console.error(error);
+      setTimeout(() => {
+        onClose();
+        setIsSuccess(false);
+        navigate('/app/my-courses');
+      }, 2000);
+    });
+  };
+
+  const handlePaymentClose = () => {
+    setIsProcessing(false);
+  };
+
+  const handleCheckout = () => {
     if (!user) {
       alert("Please log in to enroll.");
       return;
     }
     
     setIsProcessing(true);
-    try {
-      // Calculate expiration date (6 months from now)
-      const expiresAt = new Date();
-      expiresAt.setMonth(expiresAt.getMonth() + 6);
-      
-      const { error } = await supabase.from('enrollments').insert({
-        user_id: user.id,
-        course_id: course.id,
-        progress: 0,
-        expires_at: expiresAt.toISOString(),
-      });
-      
-      if (error) {
-        throw error;
+
+    if (currency === 'NGN') {
+      if (!import.meta.env.VITE_PAYSTACK_PUBLIC_KEY) {
+        alert("Paystack payment gateway not configured. Please add VITE_PAYSTACK_PUBLIC_KEY.");
+        setIsProcessing(false);
+        return;
       }
-      
-      setIsSuccess(true);
-      setTimeout(() => {
-        onClose();
-        setIsSuccess(false);
-        navigate('/app/my-courses');
-      }, 2000);
-    } catch (err: any) {
-      console.error(err);
-      alert("Failed to process enrollment: " + err.message);
-    } finally {
-      setIsProcessing(false);
+      initializePaystack({ onSuccess: handleSuccess, onClose: handlePaymentClose });
+    } else {
+      if (!import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY) {
+        alert("Flutterwave payment gateway not configured. Please add VITE_FLUTTERWAVE_PUBLIC_KEY.");
+        setIsProcessing(false);
+        return;
+      }
+      handleFlutterwavePayment({
+        callback: (response) => {
+          handleSuccess(response);
+          closePaymentModal();
+        },
+        onClose: handlePaymentClose,
+      });
     }
   };
 
@@ -84,7 +158,7 @@ export function CheckoutModal({ isOpen, onClose, course }: CheckoutModalProps) {
                   <CheckCircle2 size={32} />
                 </div>
                 <h2 className="text-2xl font-semibold text-white mb-2">Payment Successful</h2>
-                <p className="text-white/50 mb-8 max-w-sm">You now have 6 months access to {course.title}. Check your email for your receipt.</p>
+                <p className="text-white/50 mb-8 max-w-sm">You now have 6 months access to {course?.title}. Check your email for your receipt.</p>
               </div>
             ) : (
               <>
@@ -92,16 +166,16 @@ export function CheckoutModal({ isOpen, onClose, course }: CheckoutModalProps) {
                 <div className="w-full md:w-1/2 bg-[#111113] p-8 border-r border-white/5">
                   <h3 className="text-sm font-medium text-white/50 tracking-wider uppercase mb-6">Order Summary</h3>
                   <div className="aspect-video rounded-xl overflow-hidden mb-6 relative">
-                     <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
+                     <img src={course?.thumbnail} alt={course?.title} className="w-full h-full object-cover" />
                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   </div>
-                  <h2 className="text-xl font-semibold text-white mb-2 leading-snug">{course.title}</h2>
+                  <h2 className="text-xl font-semibold text-white mb-2 leading-snug">{course?.title}</h2>
                   <p className="text-white/40 text-sm mb-6 border-b border-white/10 pb-6">6 months access to all modules and resources within this masterclass.</p>
 
                   <div className="flex items-center justify-between mt-auto">
                     <span className="text-white/60">Total</span>
                     <div className="text-2xl font-semibold text-white">
-                      {currency === 'NGN' ? `₦${course.price.ngn.toLocaleString()}` : `$${course.price.usd}`}
+                      {currency === 'NGN' ? `₦${course?.price?.ngn?.toLocaleString()}` : `$${course?.price?.usd}`}
                     </div>
                   </div>
                 </div>
@@ -136,7 +210,7 @@ export function CheckoutModal({ isOpen, onClose, course }: CheckoutModalProps) {
                   <div className="space-y-6">
                     {/* Paystack Simulation Text */}
                     <div className="p-4 rounded-xl border-dashed border border-blue-500/30 bg-blue-500/5 text-blue-200/80 text-sm text-center">
-                      Secure checkout powered by <b>Paystack</b>. You will be redirected to complete your {currency} payment securely.
+                      Secure checkout powered by <b>{currency === 'NGN' ? 'Paystack' : 'Flutterwave'}</b>. You will be redirected to complete your {currency} payment securely.
                     </div>
 
                     <button 
@@ -147,7 +221,7 @@ export function CheckoutModal({ isOpen, onClose, course }: CheckoutModalProps) {
                       {isProcessing ? (
                         <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
                       ) : (
-                        <>Pay {currency === 'NGN' ? `₦${course.price.ngn.toLocaleString()}` : `$${course.price.usd}`} <ArrowRight size={18} /></>
+                        <>Pay {currency === 'NGN' ? `₦${course?.price?.ngn?.toLocaleString()}` : `$${course?.price?.usd}`} <ArrowRight size={18} /></>
                       )}
                     </button>
 

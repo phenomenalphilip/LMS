@@ -115,8 +115,8 @@ export function PublicPortfolio() {
       <header className="fixed top-0 w-full bg-[#09090b]/80 backdrop-blur-xl border-b border-white/5 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 text-white font-semibold">
-            <div className="w-8 h-8 rounded bg-white text-black flex items-center justify-center font-bold">L</div>
-            <span className="tracking-tight">Leaders Court</span>
+            <div className="w-8 h-8 rounded bg-white text-black flex items-center justify-center font-bold">P</div>
+            <span className="tracking-tight">PDS Academy</span>
           </Link>
           <div className="text-xs font-medium text-white/40 tracking-widest uppercase">
             Public Portfolio
@@ -149,7 +149,7 @@ export function PublicPortfolio() {
                   <h1 className="text-3xl font-semibold text-white tracking-tight leading-tight">
                     {profile.full_name}
                   </h1>
-                  <p className="text-lg text-white/50">{profile.industry || 'Student at Leaders Court'}</p>
+                  <p className="text-lg text-white/50">{profile.industry || 'Student at PDS Academy'}</p>
                 </div>
               </div>
 
@@ -239,7 +239,7 @@ export function PublicPortfolio() {
                           <h4 className="text-lg font-semibold text-white mb-2 leading-snug">{cert.title}</h4>
                           <div className="flex items-center gap-2 mt-auto text-xs text-white/40">
                             <Clock size={12} />
-                            <span>Verified by Leaders Court</span>
+                            <span>Verified by PDS Academy</span>
                           </div>
                         </div>
                       </motion.div>

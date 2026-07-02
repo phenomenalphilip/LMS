@@ -1,7 +1,7 @@
 export const roadmapPhases = [
   {
     phase: "Phase 1: Environment Setup & Scaffolding",
-    description: "Initialize the Vercel + Next.js (App Router) environment. Set up the Tailwind CSS design system inheriting typography and colors from leaderscourt.com. Deploy initial staging domain.",
+    description: "Initialize the Vercel + Next.js (App Router) environment. Set up the Tailwind CSS design system inheriting typography and colors from pdsacademy.com. Deploy initial staging domain.",
     duration: "Week 1",
   },
   {

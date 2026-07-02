@@ -1,14 +1,21 @@
 import { motion } from 'motion/react';
 import { ArrowRight, PlayCircle, Shield, Globe, Award, ChevronRight, Users, TrendingUp, CheckCircle2, Quote } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const testimonials = [
   { name: "Amina J.", role: "Chief Operating Officer", quote: "The strategic insights from the Executive Masterclass completely transformed how we approach quarterly planning. Brilliant." },
-  { name: "David O.", role: "Managing Director", quote: "Leaders Court provides the exact caliber of executive education I was looking for, without having to travel abroad." },
+  { name: "David O.", role: "Managing Director", quote: "PDS Academy provides the exact caliber of executive education I was looking for, without having to travel abroad." },
   { name: "Sarah M.", role: "Head of Strategy", quote: "Actionable, dense, and beautifully produced. The best investment I've made in my career this year." }
 ];
 
 export function Landing() {
+  const { user, loading } = useAuth();
+
+  if (!loading && user) {
+    return <Navigate to="/app/dashboard" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-[#09090b] text-white font-sans selection:bg-white/20 overflow-x-hidden">
       {/* Navigation */}
@@ -86,11 +93,11 @@ export function Landing() {
         </div>
       </section>
 
-      {/* The Leaders Court Edge (Bento Grid) */}
+      {/* The PDS Academy Edge (Bento Grid) */}
       <section className="py-32 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="mb-16">
-            <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4">The Leaders Court Edge.</h2>
+            <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4">The PDS Academy Edge.</h2>
             <p className="text-white/50 text-lg max-w-2xl">We bridge the gap between abstract theory and operational execution.</p>
           </div>
 
@@ -237,7 +244,7 @@ export function Landing() {
             <div>
               <h4 className="font-semibold text-white mb-4">Company</h4>
               <ul className="space-y-3">
-                <li><a href="#" className="hover:text-white transition-colors">About Leaders Court</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">About PDS Academy</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Consulting Services</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
@@ -255,7 +262,7 @@ export function Landing() {
           </div>
 
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-white/10 text-sm text-white/40">
-            <p>© {new Date().getFullYear()} Leaders Court Academy. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} PDS Academy. All rights reserved.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-white transition-colors">Twitter</a>
               <a href="#" className="hover:text-white transition-colors">LinkedIn</a>

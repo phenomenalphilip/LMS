@@ -107,7 +107,7 @@ export function Portfolio() {
               <h2 className="text-3xl font-semibold text-white tracking-tight leading-tight">
                 {profile.full_name || 'Anonymous User'}
               </h2>
-              <p className="text-lg text-white/50">{profile.industry || 'Student at Leaders Court'}</p>
+              <p className="text-lg text-white/50">{profile.industry || 'Student at PDS Academy'}</p>
             </div>
           </div>
 
@@ -193,7 +193,7 @@ export function Portfolio() {
                       <h4 className="text-lg font-semibold text-white mb-2 leading-snug">{cert.title}</h4>
                       <div className="flex items-center gap-2 mt-auto text-xs text-white/40">
                         <Clock size={12} />
-                        <span>Verified by Leaders Court</span>
+                        <span>Verified by PDS Academy</span>
                       </div>
                     </div>
                   </motion.div>

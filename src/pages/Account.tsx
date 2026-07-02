@@ -28,6 +28,7 @@ export function Account() {
   
   const [username, setUsername] = useState('');
   const [usernameError, setUsernameError] = useState('');
+  const [usernameSuccess, setUsernameSuccess] = useState('');
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -95,7 +96,7 @@ export function Account() {
 
   useEffect(() => {
     if (user) {
-      setUsername(user.user_metadata?.username || '');
+      setUsername(user.user_metadata?.username?.toLowerCase() || '');
       setFullName(user.user_metadata?.full_name || '');
       setEmail(user.email || '');
       setBio(user.user_metadata?.bio || '');
@@ -123,33 +124,42 @@ export function Account() {
   useEffect(() => {
     if (!username) {
       setUsernameError('');
+      setUsernameSuccess('');
       return;
     }
     if (!/^[a-zA-Z0-9]+$/.test(username)) {
       setUsernameError('Only letters and numbers are allowed');
+      setUsernameSuccess('');
       return;
     }
-    if (username === user?.user_metadata?.username) {
+    if (username.toLowerCase() === user?.user_metadata?.username?.toLowerCase()) {
       setUsernameError('');
+      setUsernameSuccess('');
       return;
     }
 
     const checkAvailability = async () => {
       setCheckingUsername(true);
+      setUsernameError('');
+      setUsernameSuccess('');
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('id')
-          .eq('username', username)
+          .ilike('username', username)
           .single();
           
         if (data && data.id !== user?.id) {
-          setUsernameError('Username unavailable');
+          setUsernameError('username unavailable');
+        } else {
+          setUsernameSuccess('username available');
+        }
+      } catch (e: any) {
+        if (e.code === 'PGRST116') {
+          setUsernameSuccess('username available');
         } else {
           setUsernameError('');
         }
-      } catch (e) {
-        setUsernameError('');
       } finally {
         setCheckingUsername(false);
       }
@@ -362,11 +372,16 @@ export function Account() {
                   <input 
                     type="text" 
                     value={username}
-                    onChange={e => setUsername(e.target.value)}
+                    onChange={e => {
+                      setUsername(e.target.value.toLowerCase());
+                      setUsernameError('');
+                      setUsernameSuccess('');
+                    }}
                     placeholder="johndoe"
-                    className={`w-full bg-white/5 border ${usernameError ? 'border-red-500' : 'border-white/10'} rounded-lg py-2.5 px-4 text-sm text-white focus:outline-none focus:border-white/30 transition-colors`}
+                    className={`w-full bg-white/5 border ${usernameError ? 'border-red-500' : usernameSuccess ? 'border-emerald-500' : 'border-white/10'} rounded-lg py-2.5 px-4 text-sm text-white focus:outline-none focus:border-white/30 transition-colors`}
                   />
                   {usernameError && <p className="text-xs text-red-500 mt-1">{usernameError}</p>}
+                  {usernameSuccess && !checkingUsername && <p className="text-xs text-emerald-500 mt-1">{usernameSuccess}</p>}
                   {checkingUsername && <p className="text-xs text-white/40 mt-1">Checking availability...</p>}
                 </div>
                 <div>

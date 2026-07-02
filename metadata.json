@@ -1,6 +1,6 @@
 {
-  "name": "Leaders Court LMS Architecture",
-  "description": "System architecture, database schema, and development roadmap for the headless LMS at academy.leaderscourt.com.",
+  "name": "PDS Academy LMS Architecture",
+  "description": "System architecture, database schema, and development roadmap for the headless LMS at academy.pdsacademy.com.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
