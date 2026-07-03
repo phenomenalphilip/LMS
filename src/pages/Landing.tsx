@@ -1,7 +1,8 @@
 import { motion } from 'motion/react';
-import { ArrowRight, PlayCircle, Shield, Globe, Award, ChevronRight, Users, TrendingUp, CheckCircle2, Quote } from 'lucide-react';
+import { ArrowRight, PlayCircle, Shield, Globe, Award, ChevronRight, Users, TrendingUp, CheckCircle2, Quote, Star } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useCourses } from '../contexts/CourseContext';
 
 const testimonials = [
   { name: "Amina J.", role: "Chief Operating Officer", quote: "The strategic insights from the Executive Masterclass completely transformed how we approach quarterly planning. Brilliant." },
@@ -11,6 +12,7 @@ const testimonials = [
 
 export function Landing() {
   const { user, loading } = useAuth();
+  const { courses } = useCourses();
 
   if (!loading && user) {
     return <Navigate to="/app/dashboard" replace />;
@@ -23,9 +25,9 @@ export function Landing() {
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black font-bold text-lg">
-              L
+              P
             </div>
-            <span className="font-semibold tracking-tight text-lg">Academy</span>
+            <span className="font-semibold tracking-tight text-lg">PDS Academy</span>
           </div>
           <div className="flex items-center gap-6">
             <Link to="/login" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
@@ -89,6 +91,74 @@ export function Landing() {
             <span className="text-2xl font-semibold italic opacity-90">Dangote</span>
             <span className="text-xl font-black uppercase tracking-tighter">Paystack</span>
             <span className="text-xl font-medium tracking-wide">Access Bank</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Courses */}
+      <section className="py-32 px-6 bg-[#0a0a0c]">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4">Masterclasses.</h2>
+              <p className="text-white/50 text-lg max-w-2xl">Dive deep into our premium curriculum.</p>
+            </div>
+            <Link to="/login" className="text-sm font-medium text-white hover:text-blue-400 transition-colors flex items-center gap-2">
+              View All Courses <ArrowRight size={16} />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courses.slice(0, 3).map((course, i) => (
+              <motion.div 
+                key={course.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="flex flex-col bg-[#111113] border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition-all group"
+              >
+                <Link to={`/course/${course.id}`} className="aspect-[16/10] relative overflow-hidden bg-white/5 block">
+                  <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#111113] via-[#111113]/20 to-transparent" />
+                  <div className="absolute top-4 right-4 flex gap-2">
+                    {course.category && (
+                      <div className="px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-xs font-semibold text-white/90 border border-white/10">
+                        {course.category}
+                      </div>
+                    )}
+                    <div className="px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-xs font-semibold text-white/90 border border-white/10 flex items-center gap-1.5">
+                      <Star size={12} className="text-orange-400 fill-orange-400" /> {course.rating}
+                    </div>
+                  </div>
+                </Link>
+                
+                <div className="p-6 flex-1 flex flex-col">
+                  <Link to={`/course/${course.id}`} className="hover:text-blue-400 transition-colors">
+                    <h3 className="font-semibold text-lg text-white mb-2 leading-snug">{course.title}</h3>
+                  </Link>
+                  <p className="text-sm text-white/50 mb-6 flex-1">Instructor: {course.instructor}</p>
+                  
+                  <div className="flex items-center justify-between text-xs text-white/40 mb-6">
+                    <span>{course.duration}</span>
+                    <span>{course.enrolled.toLocaleString()} enrolled</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-6 border-t border-white/10">
+                    <div>
+                      <div className="text-lg font-semibold text-white tracking-tight">${course.price.usd}</div>
+                      <div className="text-[10px] text-white/40 uppercase tracking-widest mt-0.5">NGN {course.price.ngn.toLocaleString()}</div>
+                    </div>
+                    <Link 
+                      to={`/checkout/${course.id}`}
+                      className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full transition-all active:scale-95 bg-white text-black hover:bg-gray-200"
+                    >
+                      Enroll
+                    </Link>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>

@@ -78,7 +78,11 @@ export function CourseDetails() {
     if (isEnrolled) {
       navigate(`/app/course/${course.id}`);
     } else {
-      setCheckoutCourse(course);
+      if (user) {
+        setCheckoutCourse(course);
+      } else {
+        navigate(`/checkout/${course.id}`);
+      }
     }
   };
 
@@ -91,16 +95,22 @@ export function CourseDetails() {
   };
 
   return (
-    <div className="pb-20">
+    <div className="pb-20 bg-[#09090b] min-h-screen">
       {/* Hero Section */}
       <div className="relative w-full h-[40vh] min-h-[400px] bg-[#0a0a0c]">
         <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover opacity-30" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/80 to-transparent" />
         
         <div className="absolute inset-0 p-8 max-w-7xl mx-auto flex flex-col justify-end pb-12">
-          <Link to="/app/catalog" className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-colors mb-6 w-fit">
-            <ArrowLeft size={16} /> Back to Catalog
-          </Link>
+          {user ? (
+            <Link to="/app/catalog" className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-colors mb-6 w-fit">
+              <ArrowLeft size={16} /> Back to Catalog
+            </Link>
+          ) : (
+            <Link to="/" className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-colors mb-6 w-fit">
+              <ArrowLeft size={16} /> Back to Home
+            </Link>
+          )}
           
           <div className="flex items-center gap-3 mb-4">
             <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold text-white/90 border border-white/10 uppercase tracking-wider">

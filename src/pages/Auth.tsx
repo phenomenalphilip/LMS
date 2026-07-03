@@ -60,7 +60,7 @@ export function Auth() {
           password,
         });
         if (error) throw error;
-        navigate('/app/dashboard');
+        // Navigation will be handled by the context checking user state
       } else if (view === 'signup') {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -74,12 +74,11 @@ export function Auth() {
         });
         if (error) throw error;
         
-        if (data.session) {
-          navigate('/app/dashboard');
-        } else {
+        if (!data.session) {
           setMessage('Account created! Please check your email to confirm your account before logging in.');
           setView('login');
         }
+        // If data.session exists, navigation will be handled by context checking user state
       } else if (view === 'forgot_password') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/app/dashboard`,
