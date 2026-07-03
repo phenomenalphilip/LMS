@@ -38,7 +38,7 @@ export function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/app/dashboard`
+          redirectTo: `/app/dashboard`
         }
       });
       if (error) throw error;
@@ -70,7 +70,7 @@ export function Auth() {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: `${window.location.origin}/app/dashboard`
+            emailRedirectTo: `/app/dashboard`
           }
         });
         if (error) throw error;
@@ -82,7 +82,7 @@ export function Auth() {
         // If data.session exists, navigation will be handled by context checking user state
       } else if (view === 'forgot_password') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/app/dashboard`,
+          redirectTo: `/app/dashboard`,
         });
         if (error) throw error;
         setMessage('Password reset link sent! Please check your email.');
