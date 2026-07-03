@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { MapPin, Globe, Linkedin, Twitter, Award, Clock, ArrowLeft, Mail, BookOpen, Hexagon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCourses } from '../contexts/CourseContext';
+import { Logo } from '../components/Logo';
 
 export function PublicPortfolio() {
   const { username } = useParams();
@@ -115,7 +116,7 @@ export function PublicPortfolio() {
       <header className="fixed top-0 w-full bg-[#09090b]/80 backdrop-blur-xl border-b border-white/5 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 text-white font-semibold">
-            <div className="w-8 h-8 rounded bg-white text-black flex items-center justify-center font-bold">P</div>
+            <Logo className="w-8 h-8 text-[#0084FF]" />
             <span className="tracking-tight">PDS Academy</span>
           </Link>
           <div className="text-xs font-medium text-white/40 tracking-widest uppercase">

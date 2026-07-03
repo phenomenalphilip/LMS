@@ -7,6 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { usePaystackPayment } from 'react-paystack';
 import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
 import { useCourses } from '../contexts/CourseContext';
+import { Logo } from '../components/Logo';
 
 export function PublicCheckout() {
   const { courseId } = useParams();
@@ -173,9 +174,7 @@ export function PublicCheckout() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative overflow-y-auto">
         <div className="w-full max-w-md my-auto">
           <div className="mb-8 cursor-pointer w-fit" onClick={() => navigate('/')}>
-            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-black font-bold text-xl mb-2">
-              P
-            </div>
+            <Logo className="w-10 h-10 text-[#0084FF] mb-2" />
             <span className="font-medium tracking-tight text-white/50 text-sm">PDS Academy</span>
           </div>
 

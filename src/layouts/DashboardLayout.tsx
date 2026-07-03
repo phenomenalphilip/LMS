@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, Navigate } from 'react-router-dom';
 import { BookOpen, LayoutDashboard, Award, LogOut, Bell, Library, Menu, User, CreditCard, Globe, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
+import { Logo } from '../components/Logo';
 
 export function DashboardLayout() {
   const location = useLocation();
@@ -63,10 +64,8 @@ export function DashboardLayout() {
       <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} transition-all duration-300 border-r border-white/5 bg-[#0a0a0c] flex flex-col hide-scrollbar shrink-0 z-20 relative`}>
         <div className={`p-6 h-20 flex items-center shrink-0 ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-between'}`}>
           <Link to="/app/dashboard" className="flex items-center gap-2 overflow-hidden">
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black font-bold text-lg shrink-0">
-              L
-            </div>
-            {!isSidebarCollapsed && <span className="font-semibold tracking-tight text-lg whitespace-nowrap overflow-hidden">Academy</span>}
+            <Logo className="w-8 h-8 text-[#0084FF] shrink-0" />
+            {!isSidebarCollapsed && <span className="font-semibold tracking-tight text-lg whitespace-nowrap overflow-hidden">PDS Academy</span>}
           </Link>
           <button 
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}

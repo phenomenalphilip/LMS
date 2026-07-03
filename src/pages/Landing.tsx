@@ -3,6 +3,7 @@ import { ArrowRight, PlayCircle, Shield, Globe, Award, ChevronRight, Users, Tren
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCourses } from '../contexts/CourseContext';
+import { Logo } from '../components/Logo';
 
 const testimonials = [
   { name: "Amina J.", role: "Chief Operating Officer", quote: "The strategic insights from the Executive Masterclass completely transformed how we approach quarterly planning. Brilliant." },
@@ -24,9 +25,7 @@ export function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#09090b]/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black font-bold text-lg">
-              P
-            </div>
+            <Logo className="w-8 h-8 text-[#0084FF]" />
             <span className="font-semibold tracking-tight text-lg">PDS Academy</span>
           </div>
           <div className="flex items-center gap-6">
@@ -293,10 +292,8 @@ export function Landing() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-sm text-white/50 mb-16">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-6">
-                <div className="w-6 h-6 rounded bg-white flex items-center justify-center text-black font-bold text-xs">
-                  L
-                </div>
-                <span className="font-semibold tracking-tight text-white">Academy</span>
+                <Logo className="w-6 h-6 text-[#0084FF]" />
+                <span className="font-semibold tracking-tight text-white">PDS Academy</span>
               </div>
               <p className="max-w-xs leading-relaxed">Empowering the next generation of African business leaders.</p>
             </div>

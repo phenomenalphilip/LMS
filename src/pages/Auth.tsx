@@ -4,6 +4,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { Mail, Lock, ChevronRight, CheckCircle2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { Logo } from '../components/Logo';
 
 export function Auth() {
   const [view, setView] = useState<'login' | 'signup' | 'forgot_password'>('login');
@@ -115,9 +116,7 @@ export function Auth() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent" />
         
         <div className="relative z-10 p-16 max-w-2xl">
-          <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-black font-bold text-2xl mb-8">
-            L
-          </div>
+          <Logo className="w-12 h-12 text-[#0084FF] mb-8" />
           <h1 className="text-5xl font-semibold text-white tracking-tight mb-6 leading-tight">
             Elevate your <br/>leadership potential.
           </h1>
@@ -156,9 +155,7 @@ export function Auth() {
         </div>
 
         <div className="w-full max-w-md">
-          <div className="lg:hidden w-10 h-10 rounded-xl bg-white flex items-center justify-center text-black font-bold text-xl mb-8">
-            L
-          </div>
+          <Logo className="lg:hidden w-10 h-10 text-[#0084FF] mb-8" />
           <motion.div
             key={view}
             initial={{ opacity: 0, y: 20 }}
