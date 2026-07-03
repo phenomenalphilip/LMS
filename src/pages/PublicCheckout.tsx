@@ -61,7 +61,7 @@ export function PublicCheckout() {
     customizations: {
       title: 'PDS Academy',
       description: `Payment for ${course?.title}`,
-      logo: 'https://st2.depositphotos.com/4403291/7418/v/450/depositphotos_74189661-stock-illustration-online-shop-log.jpg',
+      logo: '',
     },
     meta: {
       user_id: user?.id || "",
@@ -72,28 +72,71 @@ export function PublicCheckout() {
   const initializePaystack = usePaystackPayment(paystackConfig);
   const handleFlutterwavePayment = useFlutterwave(flutterwaveConfig);
 
-  const handleSuccess = (reference: any) => {
+  const handleSuccess = async (reference: any) => {
     setIsProcessing(false);
     setIsSuccess(true);
-    
+
     const expiresAt = new Date();
     expiresAt.setMonth(expiresAt.getMonth() + 6);
-    supabase.from('enrollments').insert({
+
+    const provider = currency === 'NGN' ? 'Paystack' : 'Flutterwave';
+    const amount = currency === 'NGN' ? (course?.price?.ngn || 0) : (course?.price?.usd || 0);
+    const ref = typeof reference === 'string' ? reference : (reference?.reference || reference?.transaction_id || reference?.tx_ref || '');
+
+    // 1. Create enrollment
+    const { error: enrollError } = await supabase.from('enrollments').insert({
       user_id: user!.id,
       course_id: course?.id || '',
       progress: 0,
       expires_at: expiresAt.toISOString(),
-    }).then(({ error }) => {
-      if (error) console.error(error);
-      setTimeout(() => {
-        navigate('/app/my-courses');
-      }, 2000);
     });
+    if (enrollError) console.error('Enrollment error:', enrollError);
+
+    // 2. Record payment transaction
+    const { error: txError } = await supabase.from('payment_transactions').insert({
+      user_id: user!.id,
+      course_id: course?.id || '',
+      course_title: course?.title || '',
+      amount,
+      currency,
+      provider,
+      reference: ref,
+      status: 'success',
+    });
+    if (txError) console.error('Transaction record error:', txError);
+
+    // 3. Upsert payment method (record the provider used)
+    const { data: existingMethods } = await supabase
+      .from('payment_methods')
+      .select('id')
+      .eq('user_id', user!.id)
+      .eq('provider', provider)
+      .limit(1);
+
+    if (!existingMethods || existingMethods.length === 0) {
+      const label = provider === 'Paystack' ? 'Paystack (₦ NGN)' : 'Flutterwave ($ USD)';
+      await supabase.from('payment_methods').insert({
+        user_id: user!.id,
+        label,
+        provider,
+        is_default: true,
+        last_used_at: new Date().toISOString(),
+      });
+    } else {
+      await supabase.from('payment_methods')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('id', existingMethods[0].id);
+    }
+
+    setTimeout(() => {
+      navigate('/app/my-courses');
+    }, 2000);
   };
 
   const handlePaymentClose = () => {
     setIsProcessing(false);
   };
+
 
   const handleCheckout = () => {
     if (!user) return;

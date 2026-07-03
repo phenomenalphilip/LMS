@@ -63,7 +63,7 @@ export function CheckoutModal({ isOpen, onClose, course }: CheckoutModalProps) {
     customizations: {
       title: 'PDS Academy',
       description: `Payment for ${course?.title}`,
-      logo: 'https://st2.depositphotos.com/4403291/7418/v/450/depositphotos_74189661-stock-illustration-online-shop-log.jpg',
+      logo: '',
     },
     meta: {
       user_id: user?.id || "",

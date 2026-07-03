@@ -15,7 +15,7 @@ export function Auth() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
@@ -74,7 +74,7 @@ export function Auth() {
           }
         });
         if (error) throw error;
-        
+
         if (!data.session) {
           setMessage('Account created! Please check your email to confirm your account before logging in.');
           setView('login');
@@ -107,18 +107,18 @@ export function Auth() {
     <div className="min-h-screen bg-[#09090b] flex font-sans overflow-hidden">
       {/* Left panel - Image/Brand */}
       <div className="hidden lg:flex w-1/2 relative bg-black items-center justify-center overflow-hidden">
-        <img 
-          src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2940&auto=format&fit=crop" 
-          alt="Leadership" 
-          className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity" 
+        <img
+          src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2940&auto=format&fit=crop"
+          alt="Leadership"
+          className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent" />
-        
+
         <div className="relative z-10 p-16 max-w-2xl">
           <Logo className="w-12 h-12 text-[#0084FF] mb-8" />
           <h1 className="text-5xl font-semibold text-white tracking-tight mb-6 leading-tight">
-            Elevate your <br/>leadership potential.
+            Elevate your <br />leadership potential.
           </h1>
           <p className="text-xl text-white/50 mb-12 max-w-md">
             Join thousands of executives mastering strategic acumen through our cinematic masterclasses.
@@ -126,7 +126,7 @@ export function Auth() {
 
           <div className="space-y-4">
             {['Optimized for global offline viewing', 'Real-time cross-device progress sync', 'Verified PDF certifications'].map((feature, i) => (
-              <motion.div 
+              <motion.div
                 key={i}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -145,7 +145,7 @@ export function Auth() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative">
         <div className="absolute top-8 right-8">
           {view !== 'forgot_password' && (
-            <button 
+            <button
               onClick={() => setView(view === 'login' ? 'signup' : 'login')}
               className="text-sm font-medium text-white/50 hover:text-white transition-colors"
             >
@@ -163,7 +163,7 @@ export function Auth() {
             transition={{ duration: 0.4 }}
           >
             {view === 'forgot_password' && (
-              <button 
+              <button
                 onClick={() => setView('login')}
                 className="flex items-center gap-2 text-sm text-white/50 hover:text-white mb-6 transition-colors"
               >
@@ -187,7 +187,7 @@ export function Auth() {
                 {error}
               </div>
             )}
-            
+
             {message && (
               <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
                 {message}
@@ -199,8 +199,8 @@ export function Auth() {
                 <div>
                   <label className="block text-xs font-medium text-white/60 mb-2">Full Name</label>
                   <div className="relative">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="name"
                       autoComplete="name"
                       value={fullName}
@@ -212,13 +212,13 @@ export function Auth() {
                   </div>
                 </div>
               )}
-              
+
               <div>
                 <label className="block text-xs font-medium text-white/60 mb-2">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     name="email"
                     autoComplete="email"
                     value={email}
@@ -240,7 +240,7 @@ export function Auth() {
                   </div>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
-                    <input 
+                    <input
                       type={showPassword ? "text" : "password"}
                       name="password"
                       autoComplete={view === 'login' ? "current-password" : "new-password"}
@@ -250,8 +250,8 @@ export function Auth() {
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-12 text-white focus:outline-none focus:border-white/30 transition-colors"
                       placeholder="••••••••"
                     />
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition-colors focus:outline-none"
                     >
@@ -261,7 +261,7 @@ export function Auth() {
                 </div>
               )}
 
-              <button 
+              <button
                 type="submit"
                 disabled={isLoading}
                 className="w-full flex items-center justify-center gap-2 bg-white text-black py-3.5 rounded-xl font-medium hover:bg-gray-200 transition-all active:scale-[0.98] disabled:opacity-70 mt-4"

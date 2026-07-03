@@ -135,3 +135,71 @@ create policy "Users can update their own progress."
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.lesson_progress TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.lesson_progress TO anon;
+
+-- 4. Payment Methods Table
+create table if not exists public.payment_methods (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  label text not null,
+  provider text not null,
+  is_default boolean default false,
+  last_used_at timestamp with time zone default timezone('utc'::text, now()),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.payment_methods enable row level security;
+
+drop policy if exists "Users can view their own payment methods." on payment_methods;
+create policy "Users can view their own payment methods."
+  on payment_methods for select
+  using ( auth.uid() = user_id );
+
+drop policy if exists "Users can insert their own payment methods." on payment_methods;
+create policy "Users can insert their own payment methods."
+  on payment_methods for insert
+  with check ( auth.uid() = user_id );
+
+drop policy if exists "Users can update their own payment methods." on payment_methods;
+create policy "Users can update their own payment methods."
+  on payment_methods for update
+  using ( auth.uid() = user_id );
+
+drop policy if exists "Users can delete their own payment methods." on payment_methods;
+create policy "Users can delete their own payment methods."
+  on payment_methods for delete
+  using ( auth.uid() = user_id );
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_methods TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_methods TO anon;
+
+
+-- 5. Payment Transactions Table
+create table if not exists public.payment_transactions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  course_id text not null,
+  course_title text not null,
+  amount numeric not null,
+  currency text not null default 'NGN',
+  provider text not null,
+  reference text,
+  status text not null default 'success',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.payment_transactions enable row level security;
+
+drop policy if exists "Users can view their own transactions." on payment_transactions;
+create policy "Users can view their own transactions."
+  on payment_transactions for select
+  using ( auth.uid() = user_id );
+
+drop policy if exists "Users can insert their own transactions." on payment_transactions;
+create policy "Users can insert their own transactions."
+  on payment_transactions for insert
+  with check ( auth.uid() = user_id );
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_transactions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_transactions TO anon;
+
+NOTIFY pgrst, 'reload schema';

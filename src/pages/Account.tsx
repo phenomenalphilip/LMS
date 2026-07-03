@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { User, Bell, Shield, Upload, Globe } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getData as getCountries } from 'country-list';

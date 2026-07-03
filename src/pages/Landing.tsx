@@ -42,9 +42,9 @@ export function Landing() {
       {/* Hero Section */}
       <section className="relative pt-40 pb-20 md:pt-52 md:pb-32 px-6">
         <div className="absolute inset-0 z-0">
-          <img 
-            src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2940&auto=format&fit=crop" 
-            alt="Hero Background" 
+          <img
+            src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2940&auto=format&fit=crop"
+            alt="Hero Background"
             className="w-full h-full object-cover opacity-20 mix-blend-luminosity"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#09090b] via-[#09090b]/50 to-[#09090b]" />
@@ -109,7 +109,7 @@ export function Landing() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.slice(0, 3).map((course, i) => (
-              <motion.div 
+              <motion.div
                 key={course.id}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -131,24 +131,24 @@ export function Landing() {
                     </div>
                   </div>
                 </Link>
-                
+
                 <div className="p-6 flex-1 flex flex-col">
                   <Link to={`/course/${course.id}`} className="hover:text-blue-400 transition-colors">
                     <h3 className="font-semibold text-lg text-white mb-2 leading-snug">{course.title}</h3>
                   </Link>
                   <p className="text-sm text-white/50 mb-6 flex-1">Instructor: {course.instructor}</p>
-                  
+
                   <div className="flex items-center justify-between text-xs text-white/40 mb-6">
                     <span>{course.duration}</span>
                     <span>{course.enrolled.toLocaleString()} enrolled</span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between pt-6 border-t border-white/10">
                     <div>
                       <div className="text-lg font-semibold text-white tracking-tight">${course.price.usd}</div>
                       <div className="text-[10px] text-white/40 uppercase tracking-widest mt-0.5">NGN {course.price.ngn.toLocaleString()}</div>
                     </div>
-                    <Link 
+                    <Link
                       to={`/checkout/${course.id}`}
                       className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full transition-all active:scale-95 bg-white text-black hover:bg-gray-200"
                     >
@@ -172,7 +172,7 @@ export function Landing() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Big Card */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
               className="md:col-span-2 bg-[#111113] border border-white/10 rounded-3xl p-8 md:p-12 relative overflow-hidden group"
             >
@@ -198,50 +198,50 @@ export function Landing() {
             </motion.div>
 
             {/* Small Card 1 */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
               className="bg-[#111113] border border-white/10 rounded-3xl p-8 relative overflow-hidden group"
             >
-               <div className="w-12 h-12 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center mb-6">
-                  <Globe size={24} />
-                </div>
-                <h3 className="text-xl font-semibold mb-3 text-white">Optimized for You</h3>
-                <p className="text-white/60 leading-relaxed text-sm">
-                  Experience seamless HLS adaptive bitrate streaming that adjusts to your network. Pay easily with dynamic NGN/USD checkout via Paystack.
-                </p>
+              <div className="w-12 h-12 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center mb-6">
+                <Globe size={24} />
+              </div>
+              <h3 className="text-xl font-semibold mb-3 text-white">Optimized for You</h3>
+              <p className="text-white/60 leading-relaxed text-sm">
+                Experience seamless HLS adaptive bitrate streaming that adjusts to your network. Pay easily with dynamic NGN/USD checkout via Paystack.
+              </p>
             </motion.div>
 
             {/* Small Card 2 */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}
               className="bg-[#111113] border border-white/10 rounded-3xl p-8 relative overflow-hidden group"
             >
-               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-6">
-                  <Award size={24} />
-                </div>
-                <h3 className="text-xl font-semibold mb-3 text-white">Verified Credentials</h3>
-                <p className="text-white/60 leading-relaxed text-sm">
-                  Earn digitally verifiable certificates upon completion to showcase your commitment to executive excellence.
-                </p>
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-6">
+                <Award size={24} />
+              </div>
+              <h3 className="text-xl font-semibold mb-3 text-white">Verified Credentials</h3>
+              <p className="text-white/60 leading-relaxed text-sm">
+                Earn digitally verifiable certificates upon completion to showcase your commitment to executive excellence.
+              </p>
             </motion.div>
-            
+
             {/* Wide Bottom Card */}
-             <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}
               className="md:col-span-3 bg-white text-black border border-white/10 rounded-3xl p-8 md:p-12 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8"
             >
-               <div>
-                 <h3 className="text-2xl md:text-3xl font-semibold mb-4">Join 15,000+ Executives</h3>
-                 <p className="text-black/70 max-w-lg">Become part of an elite alumni network. Discuss strategies, forge partnerships, and elevate your organizational impact.</p>
-               </div>
-               <div className="flex -space-x-4 shrink-0">
-                  {[1,2,3,4,5].map((i) => (
-                    <img key={i} src={`https://api.dicebear.com/9.x/notionists/svg?seed=${i}&backgroundColor=e5e7eb`} alt="Avatar" className="w-16 h-16 rounded-full border-4 border-white bg-gray-100" />
-                  ))}
-                  <div className="w-16 h-16 rounded-full border-4 border-white bg-black text-white flex items-center justify-center text-sm font-medium pl-1">
-                    +15k
-                  </div>
-               </div>
+              <div>
+                <h3 className="text-2xl md:text-3xl font-semibold mb-4">Join 15,000+ Executives</h3>
+                <p className="text-black/70 max-w-lg">Become part of an elite alumni network. Discuss strategies, forge partnerships, and elevate your organizational impact.</p>
+              </div>
+              <div className="flex -space-x-4 shrink-0">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <img key={i} src={`https://api.dicebear.com/9.x/notionists/svg?seed=${i}&backgroundColor=e5e7eb`} alt="Avatar" className="w-16 h-16 rounded-full border-4 border-white bg-gray-100" />
+                ))}
+                <div className="w-16 h-16 rounded-full border-4 border-white bg-black text-white flex items-center justify-center text-sm font-medium pl-1">
+                  +15k
+                </div>
+              </div>
             </motion.div>
           </div>
         </div>
@@ -249,35 +249,35 @@ export function Landing() {
 
       {/* Testimonials */}
       <section className="py-24 px-6 border-y border-white/5 bg-[#0a0a0c]">
-         <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4">Word on the board.</h2>
-              <p className="text-white/50 text-lg">What our alumni are saying.</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {testimonials.map((t, i) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-                  className="p-8 rounded-3xl bg-[#111113] border border-white/10 flex flex-col justify-between"
-                >
-                  <Quote size={32} className="text-white/10 mb-6" />
-                  <p className="text-white/80 leading-relaxed mb-8">"{t.quote}"</p>
-                  <div>
-                    <h4 className="font-semibold text-white">{t.name}</h4>
-                    <p className="text-sm text-white/50">{t.role}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-         </div>
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4">Word on the board.</h2>
+            <p className="text-white/50 text-lg">What our alumni are saying.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                className="p-8 rounded-3xl bg-[#111113] border border-white/10 flex flex-col justify-between"
+              >
+                <Quote size={32} className="text-white/10 mb-6" />
+                <p className="text-white/80 leading-relaxed mb-8">"{t.quote}"</p>
+                <div>
+                  <h4 className="font-semibold text-white">{t.name}</h4>
+                  <p className="text-sm text-white/50">{t.role}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* Footer CTA & Links */}
       <footer className="relative bg-[#09090b] pt-32 pb-12 px-6 overflow-hidden border-t border-white/5">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[400px] bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
-        
+
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-24 bg-white/[0.02] border border-white/5 p-12 rounded-3xl">
             <div>
@@ -285,7 +285,7 @@ export function Landing() {
               <p className="text-white/50 text-lg">Enroll today and join the next cohort.</p>
             </div>
             <Link to="/login" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-black font-medium rounded-full hover:bg-gray-200 transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
-               Get Started <ChevronRight size={18} />
+              Get Started <ChevronRight size={18} />
             </Link>
           </div>
 
@@ -293,11 +293,11 @@ export function Landing() {
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-6">
                 <Logo className="w-6 h-6 text-[#0084FF]" />
-                <span className="font-semibold tracking-tight text-white">PDS Academy</span>
+                <span className="font-semibold tracking-tight text-white">Academy</span>
               </div>
               <p className="max-w-xs leading-relaxed">Empowering the next generation of African business leaders.</p>
             </div>
-            
+
             <div>
               <h4 className="font-semibold text-white mb-4">Platform</h4>
               <ul className="space-y-3">
