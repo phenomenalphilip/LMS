@@ -141,11 +141,30 @@ create table if not exists public.payment_methods (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
   label text not null,
-  provider text not null,
+  provider text not null default 'Card',
+  cardholder_name text,
+  card_last4 text,
+  card_expiry text,
+  card_type text,
+  -- Tokenization fields (server-side only, encrypted)
+  authorization_token text,         -- AES-256-GCM encrypted authorization_code / Flutterwave token
+  paystack_customer_code text,      -- Paystack customer code for reuse
+  flw_transaction_id text,          -- Flutterwave transaction ID
+  is_tokenized boolean default false, -- true = real reusable token captured
   is_default boolean default false,
   last_used_at timestamp with time zone default timezone('utc'::text, now()),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+alter table public.payment_methods add column if not exists cardholder_name text;
+alter table public.payment_methods add column if not exists card_last4 text;
+alter table public.payment_methods add column if not exists card_expiry text;
+alter table public.payment_methods add column if not exists card_type text;
+alter table public.payment_methods add column if not exists authorization_token text;
+alter table public.payment_methods add column if not exists paystack_customer_code text;
+alter table public.payment_methods add column if not exists flw_transaction_id text;
+alter table public.payment_methods add column if not exists is_tokenized boolean default false;
+
 
 alter table public.payment_methods enable row level security;
 
