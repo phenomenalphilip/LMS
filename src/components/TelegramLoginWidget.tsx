@@ -10,7 +10,7 @@ declare global {
     Telegram?: {
       Login: {
         auth: (
-          options: { bot_id: string | number; scope?: string[]; nonce?: string; lang?: string },
+          options: { client_id: string | number; scope?: string[]; nonce?: string; lang?: string },
           callback: (result: { id_token?: string; error?: string } | false) => void
         ) => void;
       };
@@ -54,7 +54,7 @@ export function TelegramLoginWidget({ onAuth }: TelegramLoginWidgetProps) {
 
     window.Telegram.Login.auth(
       {
-        bot_id: Number(botId),
+        client_id: Number(botId),
         scope: ['profile', 'phone'],
         lang: 'en',
       },
