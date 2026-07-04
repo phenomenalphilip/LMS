@@ -4,7 +4,6 @@ import { createServer as createViteServer } from "vite";
 import Mux from "@mux/mux-node";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
-import { jwtVerify, createRemoteJWKSet } from "jose";
 
 // ─── Encryption helpers (AES-256-GCM) ────────────────────────────────────────
 
@@ -496,7 +495,7 @@ async function startServer() {
   });
 
   // ── Telegram Connect ────────────────────────────────────────────────────────
-  // Verifies Telegram OIDC id_token payload
+  // Verifies standard Telegram widget HMAC payload (data-onauth)
   app.post("/api/telegram/connect", async (req, res) => {
     try {
       const { user_id, telegram_data } = req.body;
@@ -506,21 +505,28 @@ async function startServer() {
 
       const botToken = process.env.TELEGRAM_BOT_TOKEN;
       if (!botToken) return res.status(500).json({ error: "Bot token not configured" });
-      const botId = botToken.split(':')[0];
 
-      const JWKS = createRemoteJWKSet(new URL("https://oauth.telegram.org/.well-known/jwks.json"));
+      // Validate the hash using HMAC SHA256
+      const secret = crypto.createHash('sha256').update(botToken).digest();
+      const dataCheckArr: string[] = [];
+      
+      for (const key of Object.keys(telegram_data)) {
+        if (key !== 'hash') {
+          dataCheckArr.push(`${key}=${telegram_data[key]}`);
+        }
+      }
+      
+      dataCheckArr.sort();
+      const dataCheckString = dataCheckArr.join('\n');
+      const hash = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
 
-      let decoded;
-      try {
-        const { payload } = await jwtVerify(telegram_data, JWKS, {
-          issuer: "https://oauth.telegram.org",
-          audience: botId
-        });
-        decoded = payload;
-      } catch (err) {
-        console.error("JWT Verification failed:", err);
+      if (hash !== telegram_data.hash) {
+        console.error("Telegram hash mismatch");
         return res.status(403).json({ error: "Invalid Telegram authentication" });
       }
+
+      // Hash matches, data is authentic
+      const decoded = telegram_data;
 
       const supabase = getAdminSupabase();
       
@@ -528,7 +534,7 @@ async function startServer() {
         .from("profiles")
         .update({
           telegram_chat_id: String(decoded.id),
-          telegram_username: decoded.preferred_username || null,
+          telegram_username: decoded.username || null,
         })
         .eq("id", user_id);
 

@@ -110,7 +110,7 @@ export function Community() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleTelegramAuth = async (idToken: string) => {
+  const handleTelegramAuth = async (userData: any) => {
     if (!user) return;
 
     try {
@@ -119,7 +119,7 @@ export function Community() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user.id,
-          telegram_data: idToken,
+          telegram_data: userData,
         }),
       });
 
