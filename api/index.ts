@@ -4,10 +4,7 @@ import Mux from "@mux/mux-node";
 import { createClient } from "@supabase/supabase-js";
 import { Request, Response } from "express";
 import { jwtVerify, createRemoteJWKSet } from "jose";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const jwt = require("jsonwebtoken");
-const jwksClient = require("jwks-rsa");
+
 
 const app = express();
 
