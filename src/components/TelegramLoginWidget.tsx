@@ -24,7 +24,8 @@ export function TelegramLoginWidget({ onAuth }: TelegramLoginWidgetProps) {
   const [error, setError] = useState<string | null>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
-  const botId = import.meta.env.VITE_TELEGRAM_BOT_ID;
+  // VITE_TELEGRAM_BOT_ID is the numeric part of the bot token (public info, safe to embed)
+  const botId = import.meta.env.VITE_TELEGRAM_BOT_ID || '8875441203';
 
   useEffect(() => {
     if (scriptRef.current) return; // prevent double-loading in Strict Mode
@@ -45,11 +46,6 @@ export function TelegramLoginWidget({ onAuth }: TelegramLoginWidgetProps) {
   const handleLogin = () => {
     if (!isScriptLoaded || !window.Telegram?.Login) {
       setError('Telegram SDK not ready. Please refresh and try again.');
-      return;
-    }
-
-    if (!botId) {
-      setError('Bot ID is not configured.');
       return;
     }
 
