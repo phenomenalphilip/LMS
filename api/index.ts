@@ -207,30 +207,31 @@ app.post("/api/telegram/connect", async (req, res) => {
     }
     const botId = botToken.split(":")[0];
 
-    jwt.verify(telegram_data, getTelegramSigningKey, { issuer: "https://oauth.telegram.org" }, async (err, decoded: any) => {
-      if (err) {
-        console.error("JWT Verification failed:", err);
-        return res.status(403).json({ error: "Invalid Telegram authentication" });
-      }
+    const JWKS = createRemoteJWKSet(new URL("https://oauth.telegram.org/.well-known/jwks.json"));
 
-      // aud can be a string or array
-      const aud = Array.isArray(decoded.aud) ? decoded.aud : [decoded.aud];
-      if (!aud.includes(botId)) {
-        return res.status(403).json({ error: "Token not meant for this bot" });
-      }
+    let decoded;
+    try {
+      const { payload } = await jwtVerify(telegram_data, JWKS, {
+        issuer: "https://oauth.telegram.org",
+        audience: botId
+      });
+      decoded = payload;
+    } catch (err) {
+      console.error("JWT Verification failed:", err);
+      return res.status(403).json({ error: "Invalid Telegram authentication" });
+    }
 
-      const supabase = getAdminSupabase();
+    const supabase = getAdminSupabase();
 
-      await supabase
-        .from("profiles")
-        .update({
-          telegram_chat_id: String(decoded.id),
-          telegram_username: decoded.preferred_username || null,
-        })
-        .eq("id", user_id);
+    await supabase
+      .from("profiles")
+      .update({
+        telegram_chat_id: String(decoded.id),
+        telegram_username: decoded.preferred_username || null,
+      })
+      .eq("id", user_id);
 
-      return res.json({ ok: true });
-    });
+    return res.json({ ok: true });
   } catch (err: any) {
     console.error("Telegram connect error:", err);
     res.status(500).json({ error: "Failed to connect Telegram" });
