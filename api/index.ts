@@ -215,13 +215,40 @@ app.post("/api/telegram/connect", async (req, res) => {
 
     const supabase = getAdminSupabase();
     
-    await supabase
+    const { data: existingProfile } = await supabase
       .from("profiles")
-      .update({
-        telegram_chat_id: String(decoded.id),
-        telegram_username: decoded.username || null,
-      })
-      .eq("id", user_id);
+      .select("id")
+      .eq("id", user_id)
+      .single();
+
+    if (existingProfile) {
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .update({
+          telegram_chat_id: String(decoded.id),
+          telegram_username: decoded.username || null,
+        })
+        .eq("id", user_id);
+
+      if (dbError) {
+        console.error("Supabase profile update error:", dbError);
+        return res.status(500).json({ error: "Failed to update Telegram profile." });
+      }
+    } else {
+      // Create the profile if it somehow doesn't exist
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .insert({
+          id: user_id,
+          telegram_chat_id: String(decoded.id),
+          telegram_username: decoded.username || null,
+        });
+
+      if (dbError) {
+        console.error("Supabase profile insert error:", dbError);
+        return res.status(500).json({ error: "Failed to create profile with Telegram info." });
+      }
+    }
 
     res.json({ ok: true });
   } catch (err: any) {

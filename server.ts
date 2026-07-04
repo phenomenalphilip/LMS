@@ -531,13 +531,18 @@ async function startServer() {
 
       const supabase = getAdminSupabase();
       
-      await supabase
+      const { error: dbError } = await supabase
         .from("profiles")
         .update({
           telegram_chat_id: String(decoded.id),
           telegram_username: decoded.username || null,
         })
         .eq("id", user_id);
+
+      if (dbError) {
+        console.error("Supabase profile update error:", dbError);
+        return res.status(500).json({ error: "Failed to save Telegram profile to database." });
+      }
 
       res.json({ ok: true });
     } catch (err: any) {
