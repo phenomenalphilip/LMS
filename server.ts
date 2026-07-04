@@ -4,8 +4,10 @@ import { createServer as createViteServer } from "vite";
 import Mux from "@mux/mux-node";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
-import jwt from "jsonwebtoken";
-import jwksClient from "jwks-rsa";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const jwt = require("jsonwebtoken");
+const jwksClient = require("jwks-rsa");
 
 // ─── Encryption helpers (AES-256-GCM) ────────────────────────────────────────
 
