@@ -123,15 +123,22 @@ export function Community() {
         }),
       });
 
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Telegram connect failed:', res.status, text);
+        alert(`Failed to connect Telegram (${res.status}): ${text}`);
+        return;
+      }
+
       const data = await res.json();
       if (data.ok) {
         setHasConnectedTelegram(true);
       } else {
         alert(data.error || 'Failed to connect Telegram');
       }
-    } catch (err) {
-      console.error(err);
-      alert('Network error while connecting Telegram.');
+    } catch (err: any) {
+      console.error('Telegram connect network error:', err);
+      alert(`Network error: ${err.message}`);
     }
   };
 
