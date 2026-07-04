@@ -24,8 +24,9 @@ export function TelegramLoginWidget({ onAuth }: TelegramLoginWidgetProps) {
     if (containerRef.current && containerRef.current.children.length === 0) {
       const script = document.createElement('script');
       script.src = 'https://telegram.org/js/telegram-widget.js?22';
-      // Use the provided bot username
-      script.setAttribute('data-telegram-login', 'pdsacademy_bot');
+      // Use the provided bot username from env or default
+      const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'pdsacademy_bot';
+      script.setAttribute('data-telegram-login', botUsername);
       script.setAttribute('data-size', 'large');
       script.setAttribute('data-onauth', 'onTelegramAuth(user)');
       script.setAttribute('data-request-access', 'write');

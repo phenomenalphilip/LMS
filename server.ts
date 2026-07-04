@@ -40,9 +40,10 @@ function decryptToken(payload: string): string {
 // ─── Supabase admin client (service role — bypasses RLS) ─────────────────────
 
 function getAdminSupabase() {
-  const url = process.env.VITE_SUPABASE_URL;
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Missing Supabase config.");
+  if (!url) throw new Error("Missing Supabase URL config. Ensure VITE_SUPABASE_URL is set.");
+  if (!key) throw new Error("Missing Supabase Service Role Key. Ensure SUPABASE_SERVICE_ROLE_KEY is set.");
   return createClient(url, key);
 }
 
