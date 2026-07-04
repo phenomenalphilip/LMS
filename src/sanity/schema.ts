@@ -244,5 +244,31 @@ export const schemaTypes = [
         ]
       }
     ]
+  },
+  {
+    name: 'notification',
+    title: 'Notification',
+    type: 'document',
+    fields: [
+      {
+        name: 'title',
+        title: 'Title',
+        type: 'string',
+        validation: (Rule: any) => Rule.required(),
+      },
+      {
+        name: 'message',
+        title: 'Message',
+        type: 'text',
+        validation: (Rule: any) => Rule.required(),
+      },
+      {
+        name: 'link',
+        title: 'Link (Optional)',
+        type: 'url',
+        description: 'Where should the notification take the user when clicked? (e.g. /app/catalog)',
+        validation: (Rule: any) => Rule.uri({ allowRelative: true }),
+      }
+    ]
   }
 ];

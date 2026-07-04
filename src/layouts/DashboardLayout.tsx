@@ -4,23 +4,31 @@ import { BookOpen, LayoutDashboard, Award, LogOut, Bell, Library, Menu, User, Cr
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
+import { sanityClient } from '../lib/sanity';
 
 export function DashboardLayout() {
   const location = useLocation();
   const { user, loading, signOut } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [lastReadAt, setLastReadAt] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user) {
       import('../lib/supabase').then(({ supabase }) => {
-        supabase.from('profiles').select('avatar_url').eq('id', user.id).single().then(({ data }) => {
+        supabase.from('profiles').select('avatar_url, last_read_notifications_at').eq('id', user.id).single().then(({ data }) => {
           if (data?.avatar_url) {
             setAvatarUrl(data.avatar_url);
           } else if (user.user_metadata?.avatar_url) {
             setAvatarUrl(user.user_metadata.avatar_url);
+          }
+          if (data?.last_read_notifications_at) {
+            setLastReadAt(data.last_read_notifications_at);
           }
         });
       });
@@ -28,9 +36,24 @@ export function DashboardLayout() {
   }, [user]);
 
   useEffect(() => {
+    sanityClient.fetch(`*[_type == "notification"] | order(_createdAt desc)[0...10]{
+      _id,
+      title,
+      message,
+      link,
+      _createdAt
+    }`).then(data => {
+      setNotifications(data || []);
+    });
+  }, []);
+
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -50,6 +73,22 @@ export function DashboardLayout() {
   if (!user) {
     return <Navigate to={`/login${location.hash}`} replace />;
   }
+
+  const unreadCount = notifications.filter(n => {
+    if (!lastReadAt) return true;
+    return new Date(n._createdAt) > new Date(lastReadAt);
+  }).length;
+
+  const handleOpenNotifications = async () => {
+    setIsNotificationsOpen(!isNotificationsOpen);
+    if (!isNotificationsOpen && unreadCount > 0 && user) {
+      const now = new Date().toISOString();
+      setLastReadAt(now);
+      import('../lib/supabase').then(({ supabase }) => {
+        supabase.from('profiles').update({ last_read_notifications_at: now }).eq('id', user.id);
+      });
+    }
+  };
 
   const navItems = [
     { name: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard },
@@ -120,10 +159,55 @@ export function DashboardLayout() {
         {/* Top Header */}
         <header className="h-20 border-b border-white/5 bg-[#09090b]/80 backdrop-blur-md flex items-center justify-end px-8 shrink-0 z-10 sticky top-0">
           <div className="flex items-center gap-4">
-            <button className="relative w-10 h-10 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/5 transition-colors">
-              <Bell size={20} />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-blue-500 border-2 border-[#09090b]" />
-            </button>
+            <div className="relative" ref={notificationRef}>
+              <button 
+                onClick={handleOpenNotifications}
+                className="relative w-10 h-10 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <Bell size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-blue-500 border-2 border-[#09090b]" />
+                )}
+              </button>
+
+              <AnimatePresence>
+                {isNotificationsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-80 max-h-[28rem] overflow-y-auto bg-[#111113] border border-white/10 rounded-xl shadow-2xl py-2 z-50 hide-scrollbar"
+                  >
+                    <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#111113] z-10">
+                      <h3 className="text-sm font-semibold text-white">Notifications</h3>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-white/50">
+                        No notifications yet.
+                      </div>
+                    ) : (
+                      <div className="flex flex-col">
+                        {notifications.map((notif) => (
+                          <Link 
+                            key={notif._id}
+                            to={notif.link || '#'}
+                            onClick={() => setIsNotificationsOpen(false)}
+                            className="px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 block"
+                          >
+                            <p className="text-sm font-medium text-white mb-1">{notif.title}</p>
+                            <p className="text-xs text-white/60 line-clamp-2">{notif.message}</p>
+                            <p className="text-[10px] text-white/40 mt-2">
+                              {new Date(notif._createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </p>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             <div className="w-px h-6 bg-white/10 mx-2" />
             <div className="relative" ref={dropdownRef}>
               <button 

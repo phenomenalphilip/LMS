@@ -27,6 +27,7 @@ alter table public.profiles add column if not exists is_public boolean default t
 alter table public.profiles add column if not exists linkedin text;
 alter table public.profiles add column if not exists twitter text;
 alter table public.profiles add column if not exists website text;
+alter table public.profiles add column if not exists last_read_notifications_at timestamp with time zone;
 alter table public.profiles enable row level security;
 
 -- Profiles Policies (drop if exist to avoid errors, then create)
