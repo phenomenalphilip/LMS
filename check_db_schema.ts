@@ -1,7 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = 'https://kpynihtocsflfntzuudp.supabase.co';
-const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtweW5paHRvY3NmbGZudHp1dWRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxNDAxMjksImV4cCI6MjA5NzcxNjEyOX0.WGu42AHfTbAzo6W-6p3X2E6NSoaO2-weap7du1KgfPY';
+const url = process.env.SUPABASE_URL;
+const key = process.env.SUPABASE_ANON_KEY;
+if (!url || !key) {
+  throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set');
+}
 const supabase = createClient(url, key);
 
 async function check() {
@@ -11,7 +14,6 @@ async function check() {
   } else {
     console.log("Profiles telegram_chat_id exists.");
   }
-  
   const { data: msgData, error: msgErr } = await supabase.from('course_telegram_messages').select('id').limit(1);
   if (msgErr) {
     console.error("Messages error:", msgErr.message);
@@ -19,4 +21,9 @@ async function check() {
     console.log("course_telegram_messages table exists.");
   }
 }
-check();
+
+check().catch((err) => {
+  console.error('Schema check failed:', err);
+  process.exitCode = 1;
+});
+

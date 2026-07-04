@@ -210,50 +210,29 @@ app.post("/api/telegram/connect", async (req, res) => {
       return res.status(403).json({ error: "Invalid Telegram authentication" });
     }
 
-    // Hash matches, data is authentic
-    const decoded = telegram_data;
-
     const supabase = getAdminSupabase();
-    
-    const { data: existingProfile } = await supabase
+
+    // Use upsert: update if row exists, insert if not
+    const { error: dbError } = await supabase
       .from("profiles")
-      .select("id")
-      .eq("id", user_id)
-      .single();
+      .upsert({
+        id: user_id,
+        telegram_chat_id: String(telegram_data.id),
+        telegram_username: telegram_data.username || null,
+      }, { onConflict: "id" });
 
-    if (existingProfile) {
-      const { error: dbError } = await supabase
-        .from("profiles")
-        .update({
-          telegram_chat_id: String(decoded.id),
-          telegram_username: decoded.username || null,
-        })
-        .eq("id", user_id);
-
-      if (dbError) {
-        console.error("Supabase profile update error:", dbError);
-        return res.status(500).json({ error: "Failed to update Telegram profile." });
-      }
-    } else {
-      // Create the profile if it somehow doesn't exist
-      const { error: dbError } = await supabase
-        .from("profiles")
-        .insert({
-          id: user_id,
-          telegram_chat_id: String(decoded.id),
-          telegram_username: decoded.username || null,
-        });
-
-      if (dbError) {
-        console.error("Supabase profile insert error:", dbError);
-        return res.status(500).json({ error: "Failed to create profile with Telegram info." });
-      }
+    if (dbError) {
+      console.error("Supabase upsert error:", JSON.stringify(dbError));
+      // Return the real error so we can diagnose it
+      return res.status(500).json({
+        error: `Database error: ${dbError.message} (code: ${dbError.code})`,
+      });
     }
 
     res.json({ ok: true });
   } catch (err: any) {
     console.error("Telegram connect error:", err);
-    res.status(500).json({ error: "Failed to connect Telegram" });
+    res.status(500).json({ error: err.message || "Failed to connect Telegram" });
   }
 });
 
