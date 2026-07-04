@@ -134,7 +134,13 @@ function getAdminSupabase() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url) throw new Error("Missing Supabase URL config. Ensure VITE_SUPABASE_URL is set.");
   if (!key) throw new Error("Missing Supabase Service Role Key. Ensure SUPABASE_SERVICE_ROLE_KEY is set.");
-  return createClient(url, key);
+  console.log("Admin Supabase key prefix:", key.substring(0, 20)); // Debug: confirm it's service_role
+  return createClient(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 }
 
 // ── Telegram Webhook ────────────────────────────────────────────────────────
