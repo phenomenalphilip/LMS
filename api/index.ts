@@ -2,8 +2,9 @@ import express from "express";
 import crypto from "crypto";
 import Mux from "@mux/mux-node";
 import { createClient } from "@supabase/supabase-js";
-import jwt from "jsonwebtoken";
-import jwksClient from "jwks-rsa";
+import { Request, Response } from "express";
+const jwt = require("jsonwebtoken");
+const jwksClient = require("jwks-rsa");
 
 const app = express();
 
