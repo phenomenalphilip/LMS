@@ -20,6 +20,7 @@ export function Community() {
   const { courses } = useCourses();
 
   const [hasConnectedTelegram, setHasConnectedTelegram] = useState<boolean | null>(null);
+  const [telegramUsername, setTelegramUsername] = useState<string | null>(null);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
 
@@ -36,11 +37,14 @@ export function Community() {
     // Check if user has connected telegram
     supabase
       .from('profiles')
-      .select('telegram_chat_id')
+      .select('telegram_chat_id, telegram_username')
       .eq('id', user.id)
       .single()
       .then(({ data }) => {
         setHasConnectedTelegram(!!data?.telegram_chat_id);
+        if (data?.telegram_username) {
+          setTelegramUsername(data.telegram_username);
+        }
       });
 
     // Get enrolled courses
@@ -133,6 +137,9 @@ export function Community() {
       const data = await res.json();
       if (data.ok) {
         setHasConnectedTelegram(true);
+        if (userData.username) {
+          setTelegramUsername(userData.username);
+        }
       } else {
         alert(data.error || 'Failed to connect Telegram');
       }
@@ -182,9 +189,19 @@ export function Community() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-full flex flex-col">
-      <div className="mb-8 shrink-0">
-        <h1 className="text-3xl font-bold text-white mb-2">Community</h1>
-        <p className="text-white/60">Connect with other learners and stay updated.</p>
+      <div className="mb-8 shrink-0 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Community</h1>
+          <p className="text-white/60">Connect with other learners and stay updated.</p>
+        </div>
+        {hasConnectedTelegram && telegramUsername && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full">
+            <MessageCircle className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-medium text-blue-400">
+              Connected to @{telegramUsername}
+            </span>
+          </div>
+        )}
       </div>
 
       {hasConnectedTelegram === false && (
