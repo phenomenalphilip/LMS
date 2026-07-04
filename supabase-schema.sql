@@ -27,6 +27,8 @@ alter table public.profiles add column if not exists is_public boolean default t
 alter table public.profiles add column if not exists linkedin text;
 alter table public.profiles add column if not exists twitter text;
 alter table public.profiles add column if not exists website text;
+alter table public.profiles add column if not exists telegram_chat_id text;
+alter table public.profiles add column if not exists telegram_username text;
 alter table public.profiles add column if not exists last_read_notifications_at timestamp with time zone;
 alter table public.profiles enable row level security;
 
@@ -221,5 +223,54 @@ create policy "Users can insert their own transactions."
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_transactions TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_transactions TO anon;
+
+-- 6. Course Telegram Messages Table
+create table if not exists public.course_telegram_messages (
+  id uuid default gen_random_uuid() primary key,
+  course_id text not null,
+  telegram_message_id text not null,
+  sender_name text,
+  sender_username text,
+  sender_avatar text,
+  text_content text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.course_telegram_messages enable row level security;
+
+-- Only users enrolled in the course can view its messages
+drop policy if exists "Enrolled users can view course messages." on course_telegram_messages;
+create policy "Enrolled users can view course messages."
+  on course_telegram_messages for select
+  using ( exists (
+    select 1 from public.enrollments e
+    where e.user_id = auth.uid() and e.course_id = course_telegram_messages.course_id
+  ));
+
+GRANT SELECT ON public.course_telegram_messages TO authenticated;
+
+-- 7. Retention Policy for Telegram Messages (Auto-cleanup > 30 days)
+create extension if not exists pg_cron;
+
+create or replace function public.delete_old_telegram_messages()
+returns void as $$
+begin
+  delete from public.course_telegram_messages
+  where created_at < now() - interval '30 days';
+end;
+$$ language plpgsql security definer;
+
+-- Schedule the function to run every day at midnight using pg_cron
+-- Note: pg_cron execution may need to be run in the supabase SQL editor manually if permissions complain
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.schedule(
+      'delete-old-telegram-messages', 
+      '0 0 * * *', 
+      'select public.delete_old_telegram_messages();'
+    );
+  end if;
+end $$;
 
 NOTIFY pgrst, 'reload schema';

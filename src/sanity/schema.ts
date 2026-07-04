@@ -29,7 +29,7 @@ export const schemaTypes = [
         name: 'details',
         title: 'Comprehensive Course Details',
         type: 'array',
-        of: [{type: 'block'}],
+        of: [{ type: 'block' }],
         description: 'Detailed information about what this course covers, requirements, etc.'
       },
       {
@@ -106,6 +106,18 @@ export const schemaTypes = [
         },
       },
       {
+        name: 'telegramGroupLink',
+        title: 'Telegram Group Link',
+        type: 'url',
+        description: 'Invite link to the course Telegram community',
+      },
+      {
+        name: 'telegramGroupId',
+        title: 'Telegram Group ID',
+        type: 'string',
+        description: 'The Chat ID of the Telegram group (used by the bot)',
+      },
+      {
         name: 'modules',
         title: 'Course Modules',
         type: 'array',
@@ -161,7 +173,7 @@ export const schemaTypes = [
         name: 'content',
         title: 'Written Content',
         type: 'array',
-        of: [{type: 'block'}],
+        of: [{ type: 'block' }],
         description: 'Text content for this lesson.',
       },
       {
@@ -219,23 +231,23 @@ export const schemaTypes = [
           {
             type: 'object',
             fields: [
-              { 
-                name: 'questionText', 
-                title: 'Question', 
+              {
+                name: 'questionText',
+                title: 'Question',
                 type: 'string',
                 validation: (Rule: any) => Rule.required()
               },
-              { 
-                name: 'options', 
-                title: 'Options', 
-                type: 'array', 
+              {
+                name: 'options',
+                title: 'Options',
+                type: 'array',
                 of: [{ type: 'string' }],
                 validation: (Rule: any) => Rule.required().min(2)
               },
-              { 
-                name: 'correctAnswer', 
-                title: 'Correct Answer', 
-                type: 'string', 
+              {
+                name: 'correctAnswer',
+                title: 'Correct Answer',
+                type: 'string',
                 description: 'This must exactly match one of the options you provided above.',
                 validation: (Rule: any) => Rule.required()
               }

@@ -12,6 +12,7 @@ import { Billing } from './pages/Billing';
 import { Portfolio } from './pages/Portfolio';
 import { Auth } from './pages/Auth';
 import { Landing } from './pages/Landing';
+import { Community } from './pages/Community';
 import { PublicPortfolio } from './pages/PublicPortfolio';
 import { PublicCheckout } from './pages/PublicCheckout';
 import { AuthProvider } from './contexts/AuthContext';
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="account" element={<Account />} />
               <Route path="billing" element={<Billing />} />
               <Route path="portfolio" element={<Portfolio />} />
+              <Route path="community" element={<Community />} />
               <Route path="course/:courseId" element={<CoursePlayer />} />
               <Route path="certificate/:courseId" element={<Certificate />} />
             </Route>

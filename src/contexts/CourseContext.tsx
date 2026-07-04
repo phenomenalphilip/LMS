@@ -53,6 +53,8 @@ export type Course = {
   thumbnail: string;
   nextModule?: string;
   muxPlaybackId?: string;
+  telegramGroupId?: string;
+  telegramGroupLink?: string;
   modules?: Module[];
 };
 
@@ -105,6 +107,8 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
             thumbnail: c.thumbnail || 'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2940&auto=format&fit=crop',
             nextModule: c.nextModule,
             muxPlaybackId: c.muxPlaybackId,
+            telegramGroupId: c.telegramGroupId,
+            telegramGroupLink: c.telegramGroupLink,
             modules: c.modules || []
           }));
           setCourses(mapped);

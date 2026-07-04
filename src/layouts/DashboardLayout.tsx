@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom';
-import { BookOpen, LayoutDashboard, Award, LogOut, Bell, Library, Menu, User, CreditCard, Globe, ChevronDown } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Award, LogOut, Bell, Library, Menu, User, CreditCard, Globe, ChevronDown, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
@@ -95,6 +95,7 @@ export function DashboardLayout() {
     { name: 'Course Catalog', path: '/app/catalog', icon: Library },
     { name: 'My Courses', path: '/app/my-courses', icon: BookOpen },
     { name: 'Certifications', path: '/app/certifications', icon: Award },
+    { name: 'Community', path: '/app/community', icon: Users },
   ];
 
   return (
@@ -106,7 +107,7 @@ export function DashboardLayout() {
             <Logo className="w-8 h-8 text-[#0084FF] shrink-0" />
             {!isSidebarCollapsed && <span className="font-semibold tracking-tight text-lg whitespace-nowrap overflow-hidden">PDS Academy</span>}
           </Link>
-          <button 
+          <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className={`p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors focus:outline-none shrink-0 ${isSidebarCollapsed ? 'absolute -right-3 top-6 bg-[#111113] border border-white/10 rounded-full' : ''}`}
             aria-label="Toggle Sidebar"
@@ -124,9 +125,8 @@ export function DashboardLayout() {
                 key={item.path}
                 to={item.path}
                 title={isSidebarCollapsed ? item.name : undefined}
-                className={`relative flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  isActive ? 'text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5'
-                }`}
+                className={`relative flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive ? 'text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                  }`}
               >
                 {isActive && (
                   <motion.div
@@ -143,8 +143,8 @@ export function DashboardLayout() {
         </nav>
 
         <div className={`p-4 mt-auto border-t border-white/5 shrink-0 ${isSidebarCollapsed ? 'px-3' : ''}`}>
-          <button 
-            onClick={signOut} 
+          <button
+            onClick={signOut}
             title={isSidebarCollapsed ? "Sign Out" : undefined}
             className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} px-3 py-2.5 w-full rounded-xl text-sm font-medium text-white/50 hover:text-white hover:bg-white/5 transition-colors`}
           >
@@ -160,7 +160,7 @@ export function DashboardLayout() {
         <header className="h-20 border-b border-white/5 bg-[#09090b]/80 backdrop-blur-md flex items-center justify-end px-8 shrink-0 z-10 sticky top-0">
           <div className="flex items-center gap-4">
             <div className="relative" ref={notificationRef}>
-              <button 
+              <button
                 onClick={handleOpenNotifications}
                 className="relative w-10 h-10 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/5 transition-colors"
               >
@@ -189,7 +189,7 @@ export function DashboardLayout() {
                     ) : (
                       <div className="flex flex-col">
                         {notifications.map((notif) => (
-                          <Link 
+                          <Link
                             key={notif._id}
                             to={notif.link || '#'}
                             onClick={() => setIsNotificationsOpen(false)}
@@ -210,7 +210,7 @@ export function DashboardLayout() {
             </div>
             <div className="w-px h-6 bg-white/10 mx-2" />
             <div className="relative" ref={dropdownRef}>
-              <button 
+              <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-xl transition-colors"
               >
@@ -243,35 +243,35 @@ export function DashboardLayout() {
                       <p className="text-sm font-medium text-white truncate">{user.user_metadata?.full_name || 'Executive Member'}</p>
                       <p className="text-xs text-white/40 truncate">{user.email}</p>
                     </div>
-                    
-                    <Link 
-                      to="/app/account" 
+
+                    <Link
+                      to="/app/account"
                       onClick={() => setIsDropdownOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <User size={16} />
                       Account
                     </Link>
-                    <Link 
-                      to="/app/billing" 
+                    <Link
+                      to="/app/billing"
                       onClick={() => setIsDropdownOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <CreditCard size={16} />
                       Billing
                     </Link>
-                    <Link 
-                      to="/app/portfolio" 
+                    <Link
+                      to="/app/portfolio"
                       onClick={() => setIsDropdownOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <Globe size={16} />
                       Portfolio
                     </Link>
-                    
+
                     <div className="w-full h-px bg-white/5 my-2" />
-                    
-                    <button 
+
+                    <button
                       onClick={() => {
                         setIsDropdownOpen(false);
                         signOut();
