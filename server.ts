@@ -497,53 +497,42 @@ async function startServer() {
 
   // ── Telegram Connect ────────────────────────────────────────────────────────
   // Verifies Telegram OIDC id_token payload
-  const telegramJwksClient = jwksClient({
-    jwksUri: "https://oauth.telegram.org/.well-known/jwks.json",
-  });
-
-  function getTelegramSigningKey(header: any, callback: any) {
-    telegramJwksClient.getSigningKey(header.kid, function(err, key) {
-      if (err) return callback(err);
-      const signingKey = key.getPublicKey();
-      callback(null, signingKey);
-    });
-  }
-
   app.post("/api/telegram/connect", async (req, res) => {
     try {
       const { user_id, telegram_data } = req.body;
-      // In the new flow, telegram_data is the id_token
       if (!user_id || !telegram_data) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      jwt.verify(telegram_data, getTelegramSigningKey, { issuer: "https://oauth.telegram.org" }, async (err, decoded: any) => {
-        if (err) {
-          console.error("JWT Verification failed:", err);
-          return res.status(403).json({ error: "Invalid Telegram authentication" });
-        }
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      if (!botToken) return res.status(500).json({ error: "Bot token not configured" });
+      const botId = botToken.split(':')[0];
 
-        const botToken = process.env.TELEGRAM_BOT_TOKEN;
-        if (!botToken) return res.status(500).json({ error: "Bot token not configured" });
-        const botId = botToken.split(':')[0];
+      const JWKS = createRemoteJWKSet(new URL("https://oauth.telegram.org/.well-known/jwks.json"));
 
-        // Telegram sets the audience (aud) to your bot's Client ID
-        if (decoded.aud !== botId) {
-          return res.status(403).json({ error: "Token not meant for this bot" });
-        }
+      let decoded;
+      try {
+        const { payload } = await jwtVerify(telegram_data, JWKS, {
+          issuer: "https://oauth.telegram.org",
+          audience: botId
+        });
+        decoded = payload;
+      } catch (err) {
+        console.error("JWT Verification failed:", err);
+        return res.status(403).json({ error: "Invalid Telegram authentication" });
+      }
 
-        const supabase = getAdminSupabase();
-        
-        await supabase
-          .from("profiles")
-          .update({
-            telegram_chat_id: String(decoded.id),
-            telegram_username: decoded.preferred_username || null,
-          })
-          .eq("id", user_id);
+      const supabase = getAdminSupabase();
+      
+      await supabase
+        .from("profiles")
+        .update({
+          telegram_chat_id: String(decoded.id),
+          telegram_username: decoded.preferred_username || null,
+        })
+        .eq("id", user_id);
 
-        res.json({ ok: true });
-      });
+      res.json({ ok: true });
     } catch (err: any) {
       console.error("Telegram connect error:", err);
       res.status(500).json({ error: "Failed to connect Telegram" });
