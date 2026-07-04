@@ -110,7 +110,7 @@ export function Community() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleTelegramAuth = async (tgUser: any) => {
+  const handleTelegramAuth = async (idToken: string) => {
     if (!user) return;
 
     try {
@@ -119,7 +119,7 @@ export function Community() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user.id,
-          telegram_data: tgUser,
+          telegram_data: idToken,
         }),
       });
 
@@ -173,8 +173,6 @@ export function Community() {
   const userCourses = courses.filter(c => enrolledCourseIds.includes(c.id));
   const coursesWithGroups = userCourses.filter(c => c.telegramGroupId);
 
-  const telegramBotUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME;
-
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-full flex flex-col">
       <div className="mb-8 shrink-0">
@@ -192,17 +190,7 @@ export function Community() {
             Link your Telegram account to join course groups, view updates, and chat with the community right from your dashboard.
           </p>
 
-          {telegramBotUsername ? (
-            <TelegramLoginWidget
-              botName={telegramBotUsername}
-              onAuth={handleTelegramAuth}
-              buttonSize="large"
-              cornerRadius={12}
-              requestAccess="write"
-            />
-          ) : (
-            <p className="text-red-400 text-sm">VITE_TELEGRAM_BOT_USERNAME environment variable is not configured.</p>
-          )}
+          <TelegramLoginWidget onAuth={handleTelegramAuth} />
         </div>
       )}
 

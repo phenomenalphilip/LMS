@@ -4,6 +4,8 @@ import { createServer as createViteServer } from "vite";
 import Mux from "@mux/mux-node";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import jwt from "jsonwebtoken";
+import jwksClient from "jwks-rsa";
 
 // ─── Encryption helpers (AES-256-GCM) ────────────────────────────────────────
 
@@ -495,50 +497,54 @@ async function startServer() {
   });
 
   // ── Telegram Connect ────────────────────────────────────────────────────────
-  // Verifies Telegram Login Widget payload
+  // Verifies Telegram OIDC id_token payload
+  const telegramJwksClient = jwksClient({
+    jwksUri: "https://oauth.telegram.org/.well-known/jwks.json",
+  });
+
+  function getTelegramSigningKey(header: any, callback: any) {
+    telegramJwksClient.getSigningKey(header.kid, function(err, key) {
+      if (err) return callback(err);
+      const signingKey = key.getPublicKey();
+      callback(null, signingKey);
+    });
+  }
+
   app.post("/api/telegram/connect", async (req, res) => {
     try {
       const { user_id, telegram_data } = req.body;
+      // In the new flow, telegram_data is the id_token
       if (!user_id || !telegram_data) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const botToken = process.env.TELEGRAM_BOT_TOKEN;
-      if (!botToken) {
-        return res.status(500).json({ error: "Telegram bot token not configured" });
-      }
+      jwt.verify(telegram_data, getTelegramSigningKey, { issuer: "https://oauth.telegram.org" }, async (err, decoded: any) => {
+        if (err) {
+          console.error("JWT Verification failed:", err);
+          return res.status(403).json({ error: "Invalid Telegram authentication" });
+        }
 
-      // Verify Telegram auth data
-      const { hash, ...dataToCheck } = telegram_data;
-      const dataCheckString = Object.keys(dataToCheck)
-        .sort()
-        .map(key => `${key}=${dataToCheck[key]}`)
-        .join("\n");
-      
-      const secretKey = crypto.createHash("sha256").update(botToken).digest();
-      const hmac = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+        const botToken = process.env.TELEGRAM_BOT_TOKEN;
+        if (!botToken) return res.status(500).json({ error: "Bot token not configured" });
+        const botId = botToken.split(':')[0];
 
-      if (hmac !== hash) {
-        return res.status(403).json({ error: "Invalid Telegram authentication" });
-      }
+        // Telegram sets the audience (aud) to your bot's Client ID
+        if (decoded.aud !== botId) {
+          return res.status(403).json({ error: "Token not meant for this bot" });
+        }
 
-      // Check if auth is not too old (e.g. 24 hours)
-      if (Date.now() / 1000 - telegram_data.auth_date > 86400) {
-        return res.status(403).json({ error: "Telegram auth data expired" });
-      }
+        const supabase = getAdminSupabase();
+        
+        await supabase
+          .from("profiles")
+          .update({
+            telegram_chat_id: String(decoded.id),
+            telegram_username: decoded.preferred_username || null,
+          })
+          .eq("id", user_id);
 
-      const supabase = getAdminSupabase();
-      
-      // Update profile
-      await supabase
-        .from("profiles")
-        .update({
-          telegram_chat_id: String(telegram_data.id),
-          telegram_username: telegram_data.username || null,
-        })
-        .eq("id", user_id);
-
-      res.json({ ok: true });
+        res.json({ ok: true });
+      });
     } catch (err: any) {
       console.error("Telegram connect error:", err);
       res.status(500).json({ error: "Failed to connect Telegram" });
