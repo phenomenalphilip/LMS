@@ -8,6 +8,17 @@ import { jwtVerify, createRemoteJWKSet } from "jose";
 
 const app = express();
 
+const VALID_CHANNELS = [
+  'overview', 'announcements', 'networking', 'opportunities', 'events',
+  'wins', 'ask-the-community', 'members', 'discussion', 'resources',
+  'assignments', 'live-qa', 'general'
+];
+
+const CHANNEL_ALIASES: Record<string, string> = {
+  overview: 'general',
+  discussion: 'general'
+};
+
 app.use(express.json({
   verify: (req, res, buf) => {
     (req as any).rawBody = buf;
@@ -229,18 +240,15 @@ app.post("/api/webhooks/telegram", async (req, res) => {
 
         // Fallback to hashtag matching if not a reply
         if (derivedChannel === 'general' && text) {
-          const validChannels = [
-            'overview', 'announcements', 'networking', 'opportunities', 'events',
-            'wins', 'ask-the-community', 'members', 'discussion', 'resources',
-            'assignments', 'live-qa'
-          ];
           const lowerText = text.toLowerCase();
-          for (const ch of validChannels) {
+          for (const ch of VALID_CHANNELS) {
             if (lowerText.includes(`#${ch.replace(/-/g, '')}`) || lowerText.includes(`#${ch}`)) {
               derivedChannel = ch; break;
             }
           }
         }
+        
+        const finalChannel = CHANNEL_ALIASES[derivedChannel] || derivedChannel;
 
         const { error: insertErr } = await supabase.from("community_messages").upsert({
           community_id: community.id,
@@ -249,7 +257,7 @@ app.post("/api/webhooks/telegram", async (req, res) => {
           sender_name: [msg.from.first_name, msg.from.last_name].filter(Boolean).join(" ") || "Unknown",
           sender_username: msg.from.username || null,
           content: text,
-          channel_name: derivedChannel
+          channel_name: finalChannel
         }, { onConflict: 'community_id,provider,channel_name,telegram_message_id', ignoreDuplicates: true });
 
         if (insertErr) {
@@ -333,15 +341,12 @@ app.post("/api/telegram/send", async (req, res) => {
     }
 
     const normalizedChannel = (channel_name || 'general').trim().toLowerCase();
-    const validChannels = [
-      'overview', 'announcements', 'networking', 'opportunities', 'events',
-      'wins', 'ask-the-community', 'members', 'discussion', 'resources',
-      'assignments', 'live-qa', 'general'
-    ];
 
-    if (!validChannels.includes(normalizedChannel)) {
+    if (!VALID_CHANNELS.includes(normalizedChannel)) {
       return res.status(400).json({ error: "Invalid channel name" });
     }
+
+    const finalChannel = CHANNEL_ALIASES[normalizedChannel] || normalizedChannel;
 
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken) return res.status(500).json({ error: "Bot token not configured" });
@@ -411,7 +416,7 @@ app.post("/api/telegram/send", async (req, res) => {
       sender_name: senderName,
       sender_username: profile?.telegram_username,
       content: text,
-      channel_name: normalizedChannel
+      channel_name: finalChannel
     });
 
     if (insertError) {

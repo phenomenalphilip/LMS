@@ -3,18 +3,12 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 if (typeof global.WebSocket === 'undefined') {
-  (global as any).WebSocket = class {};
+  (global as any).WebSocket = class { };
 }
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !serviceRoleKey) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment.');
-  process.exit(1);
-}
 
 import { Client } from 'pg';
 

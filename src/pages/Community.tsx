@@ -431,7 +431,14 @@ export function Community() {
                 {/* Chat Input */}
                 <div className="p-4 border-t border-white/5 bg-[#0a0a0c]">
                   <form onSubmit={handleSendMessage} className="relative">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
                       placeholder={hasConnectedTelegram ? (canPost ? `Message in #${activeTab.replace(/-/g, ' ')}...` : "Only admins can post here") : "Connect Telegram to send messages"}
+                      disabled={!hasConnectedTelegram || isSending || !activeCommunity?.telegram_chat_id || !canPost}
+                      className="w-full bg-[#111113] border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm text-white placeholder-white/40 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 transition-all"
+                    />
                     <button
                       type="submit"
                       disabled={!newMessage.trim() || !hasConnectedTelegram || isSending || !activeCommunity?.telegram_chat_id || !canPost}

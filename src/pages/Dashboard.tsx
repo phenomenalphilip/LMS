@@ -46,21 +46,31 @@ export function Dashboard() {
           }
           setProgressCounts(counts);
 
-          const welcomeSeen = localStorage.getItem(`welcome_seen_${user.id}`);
-          if (!welcomeSeen) {
-            setShowWelcome(true);
-            supabase.from('community_members').select('communities(id, name)').eq('user_id', user.id).then(({ data, error }) => {
-              if (error) {
-                console.error("Failed to load user communities for welcome banner:", error);
-                return;
+          useEffect(() => {
+            let cancelled = false;
+            async function loadProgress() {
+              if (user) {
+                const welcomeSeen = localStorage.getItem(`welcome_seen_${user.id}`);
+                if (!welcomeSeen) {
+                  setShowWelcome(true);
+                  supabase.from('community_members').select('communities(id, name)').eq('user_id', user.id).then(({ data, error }) => {
+                    if (cancelled) return;
+                    if (error) {
+                      console.error("Failed to load user communities for welcome banner:", error);
+                      return;
+                    }
+                    if (data) {
+                      const comms = data.map(d => d.communities).filter(Boolean);
+                      const uniqueComms = Array.from(new Map(comms.map((c: any) => [c.id, c])).values());
+                      setCommunities(uniqueComms);
+                    }
+                  });
+                }
               }
-              if (data) {
-                const comms = data.map(d => d.communities).filter(Boolean);
-                const uniqueComms = Array.from(new Map(comms.map((c: any) => [c.id, c])).values());
-                setCommunities(uniqueComms);
-              }
-            });
-          }
+            }
+            loadProgress();
+            return () => { cancelled = true; };
+          }, [user]);
         }
       }
     }
