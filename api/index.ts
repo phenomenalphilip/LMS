@@ -61,15 +61,13 @@ app.post("/api/webhooks/paystack", async (req, res) => {
 
       const { error } = await supabase
         .from('enrollments')
-        .insert({
+        .upsert({
           user_id: userId,
           course_id: courseId,
           expires_at: expiresAt.toISOString(),
           progress: 0,
           completed: false
-        })
-        .select()
-        .single();
+        }, { onConflict: 'user_id,course_id', ignoreDuplicates: true });
 
       if (error) {
         console.error("Error creating enrollment:", error);
@@ -134,7 +132,6 @@ function getAdminSupabase() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url) throw new Error("Missing Supabase URL config. Ensure VITE_SUPABASE_URL is set.");
   if (!key) throw new Error("Missing Supabase Service Role Key. Ensure SUPABASE_SERVICE_ROLE_KEY is set.");
-  console.log("Admin Supabase key prefix:", key.substring(0, 20)); // Debug: confirm it's service_role
   return createClient(url, key, {
     auth: {
       autoRefreshToken: false,
@@ -142,6 +139,47 @@ function getAdminSupabase() {
     },
   });
 }
+
+// ── Sanity Webhook ────────────────────────────────────────────────────────
+app.post("/api/webhooks/sanity", async (req, res) => {
+  try {
+    const { _id, _type, title, description, telegramGroupId, telegramGroupLink } = req.body;
+    
+    // We only care about courses
+    if (_type !== "course") {
+      return res.status(200).send("Ignored");
+    }
+
+    if (!_id || !title) {
+      return res.status(400).json({ error: "Missing _id or title" });
+    }
+
+    const supabase = getAdminSupabase();
+
+    // Upsert the community
+    const { error } = await supabase.from("communities").upsert({
+      course_id: _id,
+      slug: `course-${_id}`,
+      name: title,
+      description: description || null,
+      community_type: 'COURSE',
+      telegram_chat_id: telegramGroupId ? String(telegramGroupId) : null,
+      telegram_invite_link: telegramGroupLink || null,
+      is_active: true
+    }, { onConflict: "slug" });
+
+    if (error) {
+      console.error("Sanity Webhook Upsert Error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    console.log(`Sanity Webhook: Upserted course community for ${_id}`);
+    res.status(200).send("OK");
+  } catch (error) {
+    console.error("Sanity Webhook Error:", error);
+    res.status(500).send("Webhook processing failed");
+  }
+});
 
 // ── Telegram Webhook ────────────────────────────────────────────────────────
 app.post("/api/webhooks/telegram", async (req, res) => {
@@ -162,41 +200,25 @@ app.post("/api/webhooks/telegram", async (req, res) => {
 
     const supabase = getAdminSupabase();
 
-    // Hardcoded Sanity config (VITE_ vars are not available server-side on Vercel)
-    const sanityProjectId = process.env.VITE_SANITY_PROJECT_ID || 'wj0t8ags';
-    const sanityDataset = process.env.VITE_SANITY_DATASET || 'production';
-    // Use GROQ parameters for both string and number representations
-    const groqQuery = encodeURIComponent('*[_type=="course" && (telegramGroupId == $chatIdStr || telegramGroupId == $chatIdNum)][0]{_id}');
-    const groqParamStr = encodeURIComponent(JSON.stringify(chatId)); // String
-    const groqParamNum = encodeURIComponent(chatId); // Number
-    const sanityUrl = `https://${sanityProjectId}.api.sanity.io/v2022-03-07/data/query/${sanityDataset}?query=${groqQuery}&$chatIdStr=${groqParamStr}&$chatIdNum=${groqParamNum}`;
+    const { data: community } = await supabase.from('communities').select('id').eq('telegram_chat_id', chatId).single();
 
-    const sanityRes = await fetch(sanityUrl, { signal: AbortSignal.timeout(5000) });
-    if (!sanityRes.ok) {
-      console.error(`Sanity lookup failed for chatId ${chatId}: HTTP ${sanityRes.status}`);
-      return res.status(200).send("OK"); // avoid Telegram retry storm on transient Sanity errors
-    }
-    const sanityData = await sanityRes.json() as any;
-    console.log(`Sanity lookup for chatId ${chatId}:`, JSON.stringify(sanityData.result));
-
-    if (sanityData.result && sanityData.result._id) {
-      const courseId = sanityData.result._id;
-
-      const { error: insertErr } = await supabase.from("course_telegram_messages").upsert({
-        course_id: courseId,
+    if (community) {
+      const { error: insertErr } = await supabase.from("community_messages").upsert({
+        community_id: community.id,
+        provider: 'TELEGRAM',
         telegram_message_id: messageId,
         sender_name: [msg.from.first_name, msg.from.last_name].filter(Boolean).join(" ") || "Unknown",
         sender_username: msg.from.username || null,
-        text_content: text,
-      }, { onConflict: 'course_id,telegram_message_id', ignoreDuplicates: true });
+        content: text,
+      }, { onConflict: 'community_id,provider,telegram_message_id', ignoreDuplicates: true });
 
       if (insertErr) {
         console.error("Failed to save Telegram message:", JSON.stringify(insertErr));
       } else {
-        console.log(`Saved Telegram message for course ${courseId}`);
+        console.log(`Saved Telegram message for community ${community.id}`);
       }
     } else {
-      console.warn(`No course found in Sanity for telegramGroupId="${chatId}"`);
+      console.warn(`No community found in Supabase for telegram_chat_id="${chatId}"`);
     }
 
     res.status(200).send("OK");
@@ -264,8 +286,8 @@ app.post("/api/telegram/connect", async (req, res) => {
 // ── Telegram Send Message ───────────────────────────────────────────────────
 app.post("/api/telegram/send", async (req, res) => {
   try {
-    const { user_id, course_id, telegram_group_id, text, reply_to_message_id } = req.body;
-    if (!user_id || !course_id || !telegram_group_id || !text) {
+    const { user_id, community_id, text, reply_to_message_id } = req.body;
+    if (!user_id || !community_id || !text) {
       return res.status(400).json({ error: "Missing fields" });
     }
 
@@ -274,15 +296,27 @@ app.post("/api/telegram/send", async (req, res) => {
 
     const supabase = getAdminSupabase();
 
-    const { data: enrollment } = await supabase
-      .from("enrollments")
+    // Verify membership
+    const { data: member } = await supabase
+      .from("community_members")
       .select("id")
       .eq("user_id", user_id)
-      .eq("course_id", course_id)
+      .eq("community_id", community_id)
       .single();
 
-    if (!enrollment) {
-      return res.status(403).json({ error: "Not enrolled in this course" });
+    if (!member) {
+      return res.status(403).json({ error: "Not a member of this community" });
+    }
+
+    // Get community details
+    const { data: community } = await supabase
+      .from("communities")
+      .select("telegram_chat_id")
+      .eq("id", community_id)
+      .single();
+
+    if (!community || !community.telegram_chat_id) {
+      return res.status(400).json({ error: "Community is not linked to a Telegram group" });
     }
 
     const { data: profile } = await supabase
@@ -295,20 +329,16 @@ app.post("/api/telegram/send", async (req, res) => {
     const messageText = `💬 *${senderName}* says:\n\n${text}`;
 
     const tgUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const payload: any = {
-      chat_id: telegram_group_id,
-      text: messageText,
-      parse_mode: "Markdown",
-    };
-
-    if (reply_to_message_id) {
-      payload.reply_to_message_id = parseInt(reply_to_message_id, 10);
-    }
 
     const tgRes = await fetch(tgUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        chat_id: community.telegram_chat_id,
+        text: messageText,
+        parse_mode: "Markdown",
+        ...(reply_to_message_id && { reply_to_message_id: parseInt(reply_to_message_id, 10) })
+      }),
     });
 
     const tgData = await tgRes.json() as any;
@@ -317,13 +347,19 @@ app.post("/api/telegram/send", async (req, res) => {
       return res.status(500).json({ error: "Failed to send to Telegram" });
     }
 
-    await supabase.from("course_telegram_messages").insert({
-      course_id: course_id,
+    const { error: insertError } = await supabase.from("community_messages").insert({
+      community_id: community_id,
+      provider: 'TELEGRAM',
       telegram_message_id: String(tgData.result.message_id),
       sender_name: senderName,
       sender_username: profile?.telegram_username,
-      text_content: text,
+      content: text,
     });
+
+    if (insertError) {
+      console.error("Failed to insert Telegram message:", insertError);
+      return res.status(500).json({ error: "Message sent but failed to save to database" });
+    }
 
     res.json({ ok: true, message: tgData.result });
   } catch (err: any) {

@@ -1,7 +1,6 @@
 -- Reload schema cache to ensure PostgREST sees the new columns
 NOTIFY pgrst, 'reload schema';
 
-
 -- 1. Profiles Table (extends auth.users)
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade not null primary key,
@@ -86,7 +85,7 @@ create table if not exists public.enrollments (
 -- Ensure columns exist if table was already created
 alter table public.enrollments add column if not exists progress integer default 0;
 alter table public.enrollments add column if not exists enrolled_at timestamp with time zone default timezone('utc'::text, now()) not null;
-alter table public.enrollments add column if not exists expires_at timestamp with time zone;
+alter table public.enrollments add column if not exists expires_at timestamp with time zone not null;
 alter table public.enrollments add column if not exists completed boolean default false;
 alter table public.enrollments add column if not exists completed_at timestamp with time zone;
 
@@ -109,10 +108,23 @@ create policy "Users can update their own enrollments."
   on enrollments for update
   using ( auth.uid() = user_id );
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.enrollments TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.enrollments TO service_role;
+-- Idempotency: safe to re-run; ensures one enrollment per user/course
+WITH duplicates AS (
+  SELECT id,
+         ROW_NUMBER() OVER(PARTITION BY user_id, course_id ORDER BY enrolled_at DESC) as row_num
+  FROM public.enrollments
+)
+DELETE FROM public.enrollments
+WHERE id IN (SELECT id FROM duplicates WHERE row_num > 1);
 
--- 3. Lesson Progress Table
+alter table public.enrollments
+  drop constraint if exists enrollments_user_id_course_id_key;
+alter table public.enrollments
+  add constraint enrollments_user_id_course_id_key
+  unique (user_id, course_id);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.enrollments TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.enrollments TO service_role;-- 3. Lesson Progress Table
 create table if not exists public.lesson_progress (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
@@ -144,8 +156,7 @@ create policy "Users can update their own progress."
   using ( auth.uid() = user_id );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.lesson_progress TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.lesson_progress TO anon;
-
+GRANT SELECT ON public.lesson_progress TO anon;
 -- 4. Payment Methods Table
 create table if not exists public.payment_methods (
   id uuid default gen_random_uuid() primary key,
@@ -199,8 +210,6 @@ create policy "Users can delete their own payment methods."
   using ( auth.uid() = user_id );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_methods TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_methods TO anon;
-
 
 -- 5. Payment Transactions Table
 create table if not exists public.payment_transactions (
@@ -263,6 +272,19 @@ create policy "Enrolled users can view course messages."
 
 GRANT SELECT ON public.course_telegram_messages TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.course_telegram_messages TO service_role;
+
+-- Enable Realtime for course_telegram_messages so the webapp updates automatically
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'course_telegram_messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.course_telegram_messages;
+  END IF;
+END $$;
 
 -- 7. Retention Policy for Telegram Messages (Auto-cleanup > 30 days)
 create extension if not exists pg_cron;
