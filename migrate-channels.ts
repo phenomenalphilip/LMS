@@ -12,6 +12,11 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import { Client } from 'pg';
 
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
+}
+
 /**
  * Execute raw DDL using a direct Postgres connection.
  * This avoids relying on Supabase REST API endpoints (like exec_ddl)

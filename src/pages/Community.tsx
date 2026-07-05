@@ -132,11 +132,18 @@ export function Community() {
     }
 
     const fetchMessages = async () => {
-      const { data } = await supabase
+      let query = supabase
         .from('community_messages')
         .select('*')
-        .eq('community_id', activeCommunityId)
-        .eq('channel_name', channelName)
+        .eq('community_id', activeCommunityId);
+
+      if (channelName === 'general') {
+        query = query.or('channel_name.eq.general,channel_name.is.null');
+      } else {
+        query = query.eq('channel_name', channelName);
+      }
+
+      const { data } = await query
         .order('created_at', { ascending: false })
         .limit(100);
 

@@ -16,6 +16,8 @@ export function Dashboard() {
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadProgress() {
       if (user) {
         const [{ data: enrollData }, { data: progData }] = await Promise.all([
@@ -24,6 +26,7 @@ export function Dashboard() {
         ]);
 
         if (enrollData) {
+          if (cancelled) return;
           setEnrolledCourses(new Set(enrollData.map((e: any) => e.course_id)));
         }
 
@@ -44,39 +47,36 @@ export function Dashboard() {
               } catch (e) { }
             }
           }
-          setProgressCounts(counts);
 
-          useEffect(() => {
-            let cancelled = false;
-            async function loadProgress() {
-              if (user) {
-                const welcomeSeen = localStorage.getItem(`welcome_seen_${user.id}`);
-                if (!welcomeSeen) {
-                  setShowWelcome(true);
-                  supabase.from('community_members').select('communities(id, name)').eq('user_id', user.id).then(({ data, error }) => {
-                    if (cancelled) return;
-                    if (error) {
-                      console.error("Failed to load user communities for welcome banner:", error);
-                      return;
-                    }
-                    if (data) {
-                      const comms = data.map(d => d.communities).filter(Boolean);
-                      const uniqueComms = Array.from(new Map(comms.map((c: any) => [c.id, c])).values());
-                      setCommunities(uniqueComms);
-                    }
-                  });
-                }
-              }
-            }
-            loadProgress();
-            return () => { cancelled = true; };
-          }, [user]);
+          if (cancelled) return;
+          setProgressCounts(counts);
         }
       }
     }
     loadProgress();
   }, [user]);
 
+  useEffect(() => {
+    if (!user || typeof window === 'undefined') return;
+    let cancelled = false;
+    const welcomeSeen = localStorage.getItem(`welcome_seen_${user.id}`);
+    if (!welcomeSeen) {
+      setShowWelcome(true);
+      supabase.from('community_members').select('communities(id, name)').eq('user_id', user.id).then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error("Failed to load user communities for welcome banner:", error);
+          return;
+        }
+        if (data) {
+          const comms = data.map(d => d.communities).filter(Boolean);
+          const uniqueComms = Array.from(new Map(comms.map((c: any) => [c.id, c])).values());
+          setCommunities(uniqueComms);
+        }
+      });
+    }
+    return () => { cancelled = true; };
+  }, [user]);
   const dismissWelcome = () => {
     if (user) localStorage.setItem(`welcome_seen_${user.id}`, 'true');
     setShowWelcome(false);
