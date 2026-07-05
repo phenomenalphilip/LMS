@@ -60,7 +60,6 @@ export function Community() {
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [showWelcome, setShowWelcome] = useState(true);
 
   const activeCommunity = communities.find(c => c.id === activeCommunityId);
 
@@ -115,9 +114,6 @@ export function Community() {
       }
     };
     fetchCommunities();
-    
-    const welcomeSeen = localStorage.getItem(`welcome_seen_${user.id}`);
-    if (welcomeSeen) setShowWelcome(false);
   }, [user]);
 
   // Load messages when active community OR active tab changes
@@ -133,11 +129,11 @@ export function Community() {
         .select('*')
         .eq('community_id', activeCommunityId)
         .eq('channel_name', activeTab)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(100);
 
       if (data) {
-        setMessages(data as CommunityMessage[]);
+        setMessages((data as CommunityMessage[]).reverse());
         setTimeout(scrollToBottom, 100);
       }
     };
@@ -241,11 +237,6 @@ export function Community() {
     }
   };
 
-  const dismissWelcome = () => {
-    if (user) localStorage.setItem(`welcome_seen_${user.id}`, 'true');
-    setShowWelcome(false);
-  };
-
   const generalCommunities = communities.filter(c => c.community_type === 'GENERAL');
   const courseCommunities = communities.filter(c => c.community_type === 'COURSE');
 
@@ -265,36 +256,6 @@ export function Community() {
           </div>
         )}
       </div>
-
-      <AnimatePresence>
-        {showWelcome && communities.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 p-6 rounded-2xl mb-8 shrink-0 relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-            <button onClick={dismissWelcome} className="absolute top-4 right-4 text-white/50 hover:text-white">
-              <X size={20} />
-            </button>
-            
-            <h2 className="text-2xl font-bold text-white mb-4">🎉 Welcome to PDS Academy!</h2>
-            <p className="text-white/80 mb-4 max-w-2xl">
-              You've officially joined the family. Your enrollments have unlocked the following communities. Head over to the Network and introduce yourself!
-            </p>
-            
-            <div className="flex flex-wrap gap-3">
-              {communities.map(c => (
-                <div key={c.id} className="flex items-center gap-2 bg-black/40 border border-white/10 px-4 py-2 rounded-lg">
-                  <CheckCircle2 size={16} className="text-green-400" />
-                  <span className="text-white font-medium">{c.name}</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {hasConnectedTelegram === false && (
         <div className="bg-[#111113] border border-blue-500/30 p-6 rounded-2xl mb-8 shrink-0 flex flex-col items-center text-center">
@@ -388,11 +349,9 @@ export function Community() {
                     <div>
                       <h2 className="font-bold text-lg text-white mb-1">{activeCommunity.name}</h2>
                       <p className="text-sm text-white/60 max-w-xl leading-relaxed">
-                        {activeCommunity.description || (
-                          activeCommunity.community_type === 'GENERAL' 
-                            ? 'Connect with every learner across PDS Academy. Discover opportunities, events, announcements, and build professional relationships.'
-                            : 'Discuss lessons, ask questions, share projects, and collaborate with fellow learners in this course.'
-                        )}
+                        {activeCommunity.community_type === 'GENERAL' 
+                          ? 'Stay connected to all PDS Academy students and Alumni'
+                          : 'Discuss lessons, ask questions, share projects, and collaborate with fellow learners in this course.'}
                       </p>
                     </div>
                   </div>

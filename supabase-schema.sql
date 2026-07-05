@@ -253,8 +253,7 @@ CREATE TABLE IF NOT EXISTS public.community_messages (
   channel_name text DEFAULT 'general' NOT NULL,
   is_deleted boolean DEFAULT false,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-  UNIQUE(community_id, provider, telegram_message_id)
-);
+  UNIQUE(community_id, provider, channel_name, telegram_message_id));
 
 create table if not exists public.course_telegram_messages (
   id uuid default gen_random_uuid() primary key,

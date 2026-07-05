@@ -1,5 +1,5 @@
-import { Play, PlayCircle, Clock, Trophy, ChevronRight } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Play, PlayCircle, Clock, Trophy, ChevronRight, X, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCourses } from '../contexts/CourseContext';
 import { useState, useEffect } from 'react';
@@ -12,6 +12,8 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [progressCounts, setProgressCounts] = useState<Record<string, number>>({});
   const [enrolledCourses, setEnrolledCourses] = useState<Set<string>>(new Set());
+  const [communities, setCommunities] = useState<any[]>([]);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     async function loadProgress() {
@@ -42,13 +44,28 @@ export function Dashboard() {
               } catch (e) {}
             }
           }
-        }
-
         setProgressCounts(counts);
+
+        const welcomeSeen = localStorage.getItem(`welcome_seen_${user.id}`);
+        if (!welcomeSeen) {
+          setShowWelcome(true);
+          supabase.from('community_members').select('communities(id, name)').eq('user_id', user.id).then(({data}) => {
+            if (data) {
+              const comms = data.map(d => d.communities).filter(Boolean);
+              const uniqueComms = Array.from(new Map(comms.map((c: any) => [c.id, c])).values());
+              setCommunities(uniqueComms);
+            }
+          });
+        }
       }
     }
     loadProgress();
   }, [user]);
+
+  const dismissWelcome = () => {
+    if (user) localStorage.setItem(`welcome_seen_${user.id}`, 'true');
+    setShowWelcome(false);
+  };
 
   if (loading) {
     return (
@@ -101,6 +118,36 @@ export function Dashboard() {
   return (
     <div className="p-8 max-w-6xl mx-auto py-10 space-y-12">
       
+      <AnimatePresence>
+        {showWelcome && communities.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 p-6 rounded-2xl shrink-0 relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+            <button onClick={dismissWelcome} className="absolute top-4 right-4 text-white/50 hover:text-white">
+              <X size={20} />
+            </button>
+            
+            <h2 className="text-2xl font-bold text-white mb-4">🎉 Welcome to PDS Academy!</h2>
+            <p className="text-white/80 mb-4 max-w-2xl">
+              You've officially joined the family. Your enrollments have unlocked the following communities. Head over to the Network and introduce yourself!
+            </p>
+            
+            <div className="flex flex-wrap gap-3">
+              {communities.map(c => (
+                <div key={c.id} className="flex items-center gap-2 bg-black/40 border border-white/10 px-4 py-2 rounded-lg">
+                  <CheckCircle2 size={16} className="text-green-400" />
+                  <span className="text-white font-medium">{c.name}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Welcome Section */}
       <section>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
