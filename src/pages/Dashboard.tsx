@@ -12,7 +12,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [progressCounts, setProgressCounts] = useState<Record<string, number>>({});
   const [enrolledCourses, setEnrolledCourses] = useState<Set<string>>(new Set());
-  const [communities, setCommunities] = useState<any[]>([]);
+  const [communities, setCommunities] = useState<{ id: string; name: string }[]>([]);
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
@@ -41,21 +41,26 @@ export function Dashboard() {
               try {
                 const parsed = JSON.parse(localStorage.getItem(key) || '[]');
                 counts[courseId] = Math.max(counts[courseId] || 0, parsed.length);
-              } catch (e) {}
+              } catch (e) { }
             }
           }
-        setProgressCounts(counts);
+          setProgressCounts(counts);
 
-        const welcomeSeen = localStorage.getItem(`welcome_seen_${user.id}`);
-        if (!welcomeSeen) {
-          setShowWelcome(true);
-          supabase.from('community_members').select('communities(id, name)').eq('user_id', user.id).then(({data}) => {
-            if (data) {
-              const comms = data.map(d => d.communities).filter(Boolean);
-              const uniqueComms = Array.from(new Map(comms.map((c: any) => [c.id, c])).values());
-              setCommunities(uniqueComms);
-            }
-          });
+          const welcomeSeen = localStorage.getItem(`welcome_seen_${user.id}`);
+          if (!welcomeSeen) {
+            setShowWelcome(true);
+            supabase.from('community_members').select('communities(id, name)').eq('user_id', user.id).then(({ data, error }) => {
+              if (error) {
+                console.error("Failed to load user communities for welcome banner:", error);
+                return;
+              }
+              if (data) {
+                const comms = data.map(d => d.communities).filter(Boolean);
+                const uniqueComms = Array.from(new Map(comms.map((c: any) => [c.id, c])).values());
+                setCommunities(uniqueComms);
+              }
+            });
+          }
         }
       }
     }
@@ -85,8 +90,8 @@ export function Dashboard() {
 
   // Fallback to the first completed course, or just first enrolled course, or courses[0]
   if (!ongoingCourse) {
-    ongoingCourse = courses.find(c => enrolledCourses.has(c.id) && (progressCounts[c.id] || 0) > 0) 
-      || courses.find(c => enrolledCourses.has(c.id)) 
+    ongoingCourse = courses.find(c => enrolledCourses.has(c.id) && (progressCounts[c.id] || 0) > 0)
+      || courses.find(c => enrolledCourses.has(c.id))
       || courses[0];
   }
 
@@ -117,33 +122,31 @@ export function Dashboard() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto py-10 space-y-12">
-      
+
       <AnimatePresence>
         {showWelcome && communities.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 p-6 rounded-2xl shrink-0 relative overflow-hidden"
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="flex items-center justify-between bg-blue-500/10 border border-blue-500/20 px-4 py-3 rounded-xl shrink-0"
           >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-            <button onClick={dismissWelcome} className="absolute top-4 right-4 text-white/50 hover:text-white">
-              <X size={20} />
-            </button>
-            
-            <h2 className="text-2xl font-bold text-white mb-4">🎉 Welcome to PDS Academy!</h2>
-            <p className="text-white/80 mb-4 max-w-2xl">
-              You've officially joined the family. Your enrollments have unlocked the following communities. Head over to the Network and introduce yourself!
-            </p>
-            
-            <div className="flex flex-wrap gap-3">
-              {communities.map(c => (
-                <div key={c.id} className="flex items-center gap-2 bg-black/40 border border-white/10 px-4 py-2 rounded-lg">
-                  <CheckCircle2 size={16} className="text-green-400" />
-                  <span className="text-white font-medium">{c.name}</span>
-                </div>
-              ))}
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 border border-blue-500/30">
+                <CheckCircle2 size={18} className="text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-white font-medium">
+                  🎉 Welcome! You've unlocked {communities.length} {communities.length === 1 ? 'community' : 'communities'}.
+                </p>
+                <p className="text-xs text-white/60 mt-0.5">
+                  Head over to the <Link to="/app/community" className="text-blue-400 hover:text-blue-300 transition-colors">Network</Link> to introduce yourself and see your new groups.
+                </p>
+              </div>
             </div>
+            <button onClick={dismissWelcome} aria-label="Dismiss welcome message" className="text-white/40 hover:text-white transition-colors p-2 shrink-0">
+              <X size={18} />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -165,9 +168,9 @@ export function Dashboard() {
           </h2>
         </div>
 
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.98 }} 
-          animate={{ opacity: 1, scale: 1 }} 
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="relative rounded-2xl overflow-hidden border border-white/10 group cursor-pointer"
         >
@@ -175,7 +178,7 @@ export function Dashboard() {
             <img src={ongoingCourse.thumbnail} alt={ongoingCourse.title} className="w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity duration-500 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/80 to-transparent" />
           </div>
-          
+
           <div className="relative p-8 md:p-12 flex flex-col md:flex-row md:items-end justify-between gap-8 h-full pointer-events-none">
             <div className="max-w-xl pointer-events-auto">
               <div className="inline-block px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-medium text-white mb-4">
@@ -184,7 +187,7 @@ export function Dashboard() {
               <h3 className="text-2xl md:text-4xl font-semibold text-white tracking-tight leading-tight mb-4 group-hover:text-blue-400 transition-colors pointer-events-auto">
                 <Link to={`/app/course/${ongoingCourse.id}`}>{ongoingCourse.title}</Link>
               </h3>
-              
+
               <div className="flex items-center gap-4 text-sm text-white/60 mb-6">
                 <span className="flex items-center gap-1.5"><Clock size={16} /> {ongoingCourse.duration || 'Flexible Timing'}</span>
               </div>
@@ -195,19 +198,19 @@ export function Dashboard() {
                   <span className="text-white">{ongoingProgressPct >= 100 ? 'Completed' : `${ongoingProgressPct}% Completed`}</span>
                 </div>
                 <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }} 
-                    animate={{ width: `${ongoingProgressPct}%` }} 
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${ongoingProgressPct}%` }}
                     transition={{ duration: 1, delay: 0.2 }}
                     className={`h-full rounded-full relative ${ongoingProgressPct >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
                   >
-                     <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white/30" />
+                    <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white/30" />
                   </motion.div>
                 </div>
               </div>
             </div>
 
-            <Link 
+            <Link
               to={`/app/course/${ongoingCourse.id}`}
               className="group/btn flex items-center justify-center gap-2 bg-white text-black px-6 py-3.5 rounded-full font-medium hover:bg-gray-200 transition-all active:scale-95 shrink-0 pointer-events-auto"
             >
@@ -229,10 +232,10 @@ export function Dashboard() {
             Browse Catalog <ChevronRight size={16} />
           </Link>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {recommendedCourses.map((course, i) => (
-            <motion.div 
+            <motion.div
               key={course.id}
               onClick={() => navigate(`/app/catalog/${course.id}`)}
               initial={{ opacity: 0, y: 20 }}

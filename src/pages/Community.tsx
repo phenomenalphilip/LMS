@@ -116,6 +116,14 @@ export function Community() {
     fetchCommunities();
   }, [user]);
 
+  // Define canonical channel mapping for tabs at the component level
+  // so fetch, realtime, and message-sending all stay in perfect sync
+  const channelMap: Record<string, string> = {
+    overview: 'general',
+    discussion: 'general',
+  };
+  const channelName = channelMap[activeTab] || activeTab;
+
   // Load messages when active community OR active tab changes
   useEffect(() => {
     if (!activeCommunityId) {
@@ -128,7 +136,7 @@ export function Community() {
         .from('community_messages')
         .select('*')
         .eq('community_id', activeCommunityId)
-        .eq('channel_name', activeTab)
+        .eq('channel_name', channelName)
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -140,9 +148,9 @@ export function Community() {
 
     fetchMessages();
 
-    // Subscribe to new messages
+    // Subscribe to new messages using canonical channelName
     const channel = supabase
-      .channel(`community_${activeCommunityId}_${activeTab}`)
+      .channel(`community_${activeCommunityId}_${channelName}`)
       .on(
         'postgres_changes',
         {
@@ -153,9 +161,9 @@ export function Community() {
         },
         (payload) => {
           const newMsg = payload.new as CommunityMessage;
-          // Filter by active tab
-          if (newMsg.channel_name === activeTab || (!newMsg.channel_name && activeTab === 'general')) {
-            setMessages(prev => [...prev, newMsg]);
+          // Filter by active tab (canonical channelName)
+          if (newMsg.channel_name === channelName || (!newMsg.channel_name && channelName === 'general')) {
+            setMessages((prev) => [...prev, newMsg]);
             setTimeout(scrollToBottom, 100);
           }
         }
@@ -219,7 +227,7 @@ export function Community() {
           user_id: user.id,
           community_id: activeCommunityId,
           text: newMessage,
-          channel_name: activeTab
+          channel_name: channelName
         }),
       });
 
@@ -395,7 +403,7 @@ export function Community() {
                 <div className="flex-1 p-6 overflow-y-auto space-y-4">
                   {messages.length === 0 ? (
                     <div className="h-full flex items-center justify-center text-white/40 text-sm">
-                      No messages in {activeTab.replace('-', ' ')} yet. Start the conversation!
+                      No messages in {activeTab.replace(/-/g, ' ')} yet. Start the conversation!
                     </div>
                   ) : (
                     messages.map((msg) => (
@@ -423,14 +431,7 @@ export function Community() {
                 {/* Chat Input */}
                 <div className="p-4 border-t border-white/5 bg-[#0a0a0c]">
                   <form onSubmit={handleSendMessage} className="relative">
-                    <input
-                      type="text"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder={hasConnectedTelegram ? (canPost ? `Message in #${activeTab.replace('-', ' ')}...` : "Only admins can post here") : "Connect Telegram to send messages"}
-                      disabled={!hasConnectedTelegram || isSending || !activeCommunity?.telegram_chat_id || !canPost}
-                      className="w-full bg-[#111113] border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm text-white placeholder-white/40 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 transition-all"
-                    />
+                      placeholder={hasConnectedTelegram ? (canPost ? `Message in #${activeTab.replace(/-/g, ' ')}...` : "Only admins can post here") : "Connect Telegram to send messages"}
                     <button
                       type="submit"
                       disabled={!newMessage.trim() || !hasConnectedTelegram || isSending || !activeCommunity?.telegram_chat_id || !canPost}

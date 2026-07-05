@@ -144,7 +144,7 @@ function getAdminSupabase() {
 app.post("/api/webhooks/sanity", async (req, res) => {
   try {
     const { _id, _type, title, description, telegramGroupId, telegramGroupLink } = req.body;
-    
+
     // We only care about courses
     if (_type !== "course") {
       return res.status(200).send("Ignored");
@@ -200,10 +200,48 @@ app.post("/api/webhooks/telegram", async (req, res) => {
 
     const supabase = getAdminSupabase();
 
-    const { data: matchedCommunities } = await supabase.from('communities').select('id').eq('telegram_chat_id', chatId);
+    const { data: matchedCommunities, error: lookupError } = await supabase
+      .from('communities')
+      .select('id')
+      .eq('telegram_chat_id', chatId);
+
+    if (lookupError) {
+      console.error(`Communities lookup failed for chatId="${chatId}":`, JSON.stringify(lookupError));
+      return res.status(200).send("OK"); // ack to Telegram; do not retry on DB error
+    }
 
     if (matchedCommunities && matchedCommunities.length > 0) {
       for (const community of matchedCommunities) {
+        // Attempt to derive channel from reply thread scoped to this community
+        let derivedChannel = 'general';
+
+        if (msg.reply_to_message && msg.reply_to_message.message_id) {
+          const { data: parentMsg } = await supabase
+            .from('community_messages')
+            .select('channel_name')
+            .eq('telegram_message_id', String(msg.reply_to_message.message_id))
+            .eq('community_id', community.id)
+            .single();
+          if (parentMsg && parentMsg.channel_name) {
+            derivedChannel = parentMsg.channel_name;
+          }
+        }
+
+        // Fallback to hashtag matching if not a reply
+        if (derivedChannel === 'general' && text) {
+          const validChannels = [
+            'overview', 'announcements', 'networking', 'opportunities', 'events',
+            'wins', 'ask-the-community', 'members', 'discussion', 'resources',
+            'assignments', 'live-qa'
+          ];
+          const lowerText = text.toLowerCase();
+          for (const ch of validChannels) {
+            if (lowerText.includes(`#${ch.replace(/-/g, '')}`) || lowerText.includes(`#${ch}`)) {
+              derivedChannel = ch; break;
+            }
+          }
+        }
+
         const { error: insertErr } = await supabase.from("community_messages").upsert({
           community_id: community.id,
           provider: 'TELEGRAM',
@@ -211,8 +249,8 @@ app.post("/api/webhooks/telegram", async (req, res) => {
           sender_name: [msg.from.first_name, msg.from.last_name].filter(Boolean).join(" ") || "Unknown",
           sender_username: msg.from.username || null,
           content: text,
-          channel_name: 'general'
-        }, { onConflict: 'community_id,provider,telegram_message_id', ignoreDuplicates: true });
+          channel_name: derivedChannel
+        }, { onConflict: 'community_id,provider,channel_name,telegram_message_id', ignoreDuplicates: true });
 
         if (insertErr) {
           console.error(`Failed to save Telegram message for community ${community.id}:`, JSON.stringify(insertErr));
@@ -289,9 +327,20 @@ app.post("/api/telegram/connect", async (req, res) => {
 // ── Telegram Send Message ───────────────────────────────────────────────────
 app.post("/api/telegram/send", async (req, res) => {
   try {
-    const { user_id, community_id, text, reply_to_message_id, channel_name } = req.body;
+    let { user_id, community_id, text, reply_to_message_id, channel_name } = req.body;
     if (!user_id || !community_id || !text) {
       return res.status(400).json({ error: "Missing fields" });
+    }
+
+    const normalizedChannel = (channel_name || 'general').trim().toLowerCase();
+    const validChannels = [
+      'overview', 'announcements', 'networking', 'opportunities', 'events',
+      'wins', 'ask-the-community', 'members', 'discussion', 'resources',
+      'assignments', 'live-qa', 'general'
+    ];
+
+    if (!validChannels.includes(normalizedChannel)) {
+      return res.status(400).json({ error: "Invalid channel name" });
     }
 
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -311,7 +360,7 @@ app.post("/api/telegram/send", async (req, res) => {
       return res.status(403).json({ error: "Not a member of this community" });
     }
 
-    const isAdminOnlyTab = ['announcements', 'events', 'assignments'].includes(channel_name);
+    const isAdminOnlyTab = ['announcements', 'events', 'assignments'].includes(normalizedChannel);
     if (isAdminOnlyTab && member.role !== 'ADMIN') {
       return res.status(403).json({ error: "Only admins can post in this channel" });
     }
@@ -362,7 +411,7 @@ app.post("/api/telegram/send", async (req, res) => {
       sender_name: senderName,
       sender_username: profile?.telegram_username,
       content: text,
-      channel_name: channel_name || 'general'
+      channel_name: normalizedChannel
     });
 
     if (insertError) {
