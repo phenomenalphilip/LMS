@@ -48,6 +48,10 @@ create policy "Users can update own profile."
   on profiles for update
   using ( auth.uid() = id );
 
+-- Explicit grants needed for service_role and authenticated users
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.profiles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.profiles TO service_role;
+
 
 -- Function to handle new user signup and create a profile automatically
 create or replace function public.handle_new_user()

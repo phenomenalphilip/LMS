@@ -156,25 +156,39 @@ app.post("/api/webhooks/telegram", async (req, res) => {
     const messageId = String(msg.message_id);
     const text = msg.text || msg.caption;
 
+    console.log(`Telegram webhook: chatId=${chatId}, text="${text?.substring(0, 50)}"`);
+
     if (!text) return res.status(200).send("OK");
 
     const supabase = getAdminSupabase();
-    
-    const sanityUrl = `https://${process.env.VITE_SANITY_PROJECT_ID}.api.sanity.io/v2022-03-07/data/query/${process.env.VITE_SANITY_DATASET}?query=*[_type=="course"&&telegramGroupId=="${chatId}"][0]{_id}`;
+
+    // Hardcoded Sanity config (VITE_ vars are not available server-side on Vercel)
+    const sanityProjectId = process.env.VITE_SANITY_PROJECT_ID || 'wj0t8ags';
+    const sanityDataset = process.env.VITE_SANITY_DATASET || 'production';
+    const sanityUrl = `https://${sanityProjectId}.api.sanity.io/v2022-03-07/data/query/${sanityDataset}?query=*[_type=="course"&&telegramGroupId=="${chatId}"][0]{_id}`;
+
     const sanityRes = await fetch(sanityUrl);
     const sanityData = await sanityRes.json() as any;
-    
+    console.log(`Sanity lookup for chatId ${chatId}:`, JSON.stringify(sanityData.result));
+
     if (sanityData.result && sanityData.result._id) {
       const courseId = sanityData.result._id;
-      
-      await supabase.from("course_telegram_messages").insert({
+
+      const { error: insertErr } = await supabase.from("course_telegram_messages").insert({
         course_id: courseId,
         telegram_message_id: messageId,
         sender_name: [msg.from.first_name, msg.from.last_name].filter(Boolean).join(" ") || "Unknown",
         sender_username: msg.from.username || null,
         text_content: text,
       });
-      console.log(`Saved Telegram message for course ${courseId}`);
+
+      if (insertErr) {
+        console.error("Failed to save Telegram message:", JSON.stringify(insertErr));
+      } else {
+        console.log(`Saved Telegram message for course ${courseId}`);
+      }
+    } else {
+      console.warn(`No course found in Sanity for telegramGroupId="${chatId}"`);
     }
 
     res.status(200).send("OK");
@@ -218,7 +232,6 @@ app.post("/api/telegram/connect", async (req, res) => {
 
     const supabase = getAdminSupabase();
 
-    // Use upsert: update if row exists, insert if not
     const { error: dbError } = await supabase
       .from("profiles")
       .upsert({
@@ -229,10 +242,7 @@ app.post("/api/telegram/connect", async (req, res) => {
 
     if (dbError) {
       console.error("Supabase upsert error:", JSON.stringify(dbError));
-      // Return the real error so we can diagnose it
-      return res.status(500).json({
-        error: `Database error: ${dbError.message} (code: ${dbError.code})`,
-      });
+      return res.status(500).json({ error: `Database error: ${dbError.message} (code: ${dbError.code})` });
     }
 
     res.json({ ok: true });

@@ -24,6 +24,8 @@ export const coursesQuery = `*[_type == "course"]{
   rating,
   enrolled,
   price,
+  telegramGroupId,
+  telegramGroupLink,
   "thumbnail": thumbnail.asset->url,
   modules[]{
     title,
