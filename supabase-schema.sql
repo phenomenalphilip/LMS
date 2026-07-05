@@ -109,6 +109,9 @@ create policy "Users can update their own enrollments."
   on enrollments for update
   using ( auth.uid() = user_id );
 
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.enrollments TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.enrollments TO service_role;
+
 -- 3. Lesson Progress Table
 create table if not exists public.lesson_progress (
   id uuid default gen_random_uuid() primary key,
@@ -237,8 +240,15 @@ create table if not exists public.course_telegram_messages (
   sender_username text,
   sender_avatar text,
   text_content text not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(course_id, telegram_message_id)
 );
+-- Idempotency: safe to re-run; adds constraint if the table already exists without it
+alter table public.course_telegram_messages
+  drop constraint if exists course_telegram_messages_course_id_telegram_message_id_key;
+alter table public.course_telegram_messages
+  add constraint course_telegram_messages_course_id_telegram_message_id_key
+  unique (course_id, telegram_message_id);
 
 alter table public.course_telegram_messages enable row level security;
 
@@ -252,6 +262,7 @@ create policy "Enrolled users can view course messages."
   ));
 
 GRANT SELECT ON public.course_telegram_messages TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.course_telegram_messages TO service_role;
 
 -- 7. Retention Policy for Telegram Messages (Auto-cleanup > 30 days)
 create extension if not exists pg_cron;
