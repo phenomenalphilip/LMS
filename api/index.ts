@@ -200,22 +200,24 @@ app.post("/api/webhooks/telegram", async (req, res) => {
 
     const supabase = getAdminSupabase();
 
-    const { data: community } = await supabase.from('communities').select('id').eq('telegram_chat_id', chatId).single();
+    const { data: matchedCommunities } = await supabase.from('communities').select('id').eq('telegram_chat_id', chatId);
 
-    if (community) {
-      const { error: insertErr } = await supabase.from("community_messages").upsert({
-        community_id: community.id,
-        provider: 'TELEGRAM',
-        telegram_message_id: messageId,
-        sender_name: [msg.from.first_name, msg.from.last_name].filter(Boolean).join(" ") || "Unknown",
-        sender_username: msg.from.username || null,
-        content: text,
-      }, { onConflict: 'community_id,provider,telegram_message_id', ignoreDuplicates: true });
+    if (matchedCommunities && matchedCommunities.length > 0) {
+      for (const community of matchedCommunities) {
+        const { error: insertErr } = await supabase.from("community_messages").upsert({
+          community_id: community.id,
+          provider: 'TELEGRAM',
+          telegram_message_id: messageId,
+          sender_name: [msg.from.first_name, msg.from.last_name].filter(Boolean).join(" ") || "Unknown",
+          sender_username: msg.from.username || null,
+          content: text,
+        }, { onConflict: 'community_id,provider,telegram_message_id', ignoreDuplicates: true });
 
-      if (insertErr) {
-        console.error("Failed to save Telegram message:", JSON.stringify(insertErr));
-      } else {
-        console.log(`Saved Telegram message for community ${community.id}`);
+        if (insertErr) {
+          console.error(`Failed to save Telegram message for community ${community.id}:`, JSON.stringify(insertErr));
+        } else {
+          console.log(`Saved Telegram message for community ${community.id}`);
+        }
       }
     } else {
       console.warn(`No community found in Supabase for telegram_chat_id="${chatId}"`);

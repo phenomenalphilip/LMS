@@ -270,6 +270,12 @@ create policy "Enrolled users can view course messages."
     where e.user_id = auth.uid() and e.course_id = course_telegram_messages.course_id
   ));
 
+GRANT SELECT ON public.community_members TO authenticated;
+GRANT SELECT, INSERT ON public.community_messages TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.community_messages TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.communities TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.community_members TO service_role;
+
 GRANT SELECT ON public.course_telegram_messages TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.course_telegram_messages TO service_role;
 
