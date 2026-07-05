@@ -44,8 +44,46 @@ const COURSE_TABS = [
   { id: 'resources', label: 'Resources' },
   { id: 'assignments', label: 'Assignments' },
   { id: 'live-qa', label: 'Live Q&A' },
+  { id: 'announcements', label: '📢 Announcements' },
+  { id: 'networking', label: '🤝 Networking' },
+  { id: 'opportunities', label: '💼 Opportunities' },
+  { id: 'events', label: '📅 Events' },
+  { id: 'wins', label: '🎉 Wins' },
+  { id: 'ask-the-community', label: '❓ Ask the Community' },
   { id: 'members', label: 'Members' }
 ];
+
+function linkify(text: string) {
+  // Regex to match:
+  // 1. Email addresses
+  // 2. ANY http:// or https:// URL
+  // 3. Known domain extensions (.com, .net, .org, .io, .co, .edu, .gov, .me, .app, .dev) even without http://
+  // 4. IP Addresses (e.g. 192.168.1.1, 127.0.0.1:3000)
+  const urlRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+|https?:\/\/[^\s]*[^.,!?;:\s]|(?:www\.)?(?:[a-zA-Z0-9-]+\.)+(?:com|net|org|io|co|edu|gov|me|app|dev)(?:\/[^\s]*[^.,!?;:\s])?|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?(?:\/[^\s]*[^.,!?;:\s])?)/ig;
+
+  return text.split(urlRegex).map((part, i) => {
+    // If this part is a match from our regex
+    if (part.match(urlRegex)) {
+      let href = part;
+      
+      // If it's an email, prepend mailto:
+      if (part.includes('@') && !part.includes('/')) {
+        href = `mailto:${part}`;
+      } 
+      // If it's a URL/IP that doesn't start with http or https, prepend https://
+      else if (!/^https?:\/\//i.test(part)) {
+        href = `https://${part}`;
+      }
+
+      return (
+        <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
 
 export function Community() {
   const { user } = useAuth();
@@ -447,7 +485,7 @@ export function Community() {
                           </span>
                         </div>
                         <div className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap bg-white/5 p-3 rounded-2xl rounded-tl-sm inline-block">
-                          {msg.content}
+                          {linkify(msg.content)}
                         </div>
                       </div>
                     </div>
