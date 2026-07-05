@@ -211,6 +211,7 @@ app.post("/api/webhooks/telegram", async (req, res) => {
           sender_name: [msg.from.first_name, msg.from.last_name].filter(Boolean).join(" ") || "Unknown",
           sender_username: msg.from.username || null,
           content: text,
+          channel_name: 'general'
         }, { onConflict: 'community_id,provider,telegram_message_id', ignoreDuplicates: true });
 
         if (insertErr) {
@@ -288,7 +289,7 @@ app.post("/api/telegram/connect", async (req, res) => {
 // ── Telegram Send Message ───────────────────────────────────────────────────
 app.post("/api/telegram/send", async (req, res) => {
   try {
-    const { user_id, community_id, text, reply_to_message_id } = req.body;
+    const { user_id, community_id, text, reply_to_message_id, channel_name } = req.body;
     if (!user_id || !community_id || !text) {
       return res.status(400).json({ error: "Missing fields" });
     }
@@ -301,13 +302,18 @@ app.post("/api/telegram/send", async (req, res) => {
     // Verify membership
     const { data: member } = await supabase
       .from("community_members")
-      .select("id")
+      .select("id, role")
       .eq("user_id", user_id)
       .eq("community_id", community_id)
       .single();
 
     if (!member) {
       return res.status(403).json({ error: "Not a member of this community" });
+    }
+
+    const isAdminOnlyTab = ['announcements', 'events', 'assignments'].includes(channel_name);
+    if (isAdminOnlyTab && member.role !== 'ADMIN') {
+      return res.status(403).json({ error: "Only admins can post in this channel" });
     }
 
     // Get community details
@@ -356,6 +362,7 @@ app.post("/api/telegram/send", async (req, res) => {
       sender_name: senderName,
       sender_username: profile?.telegram_username,
       content: text,
+      channel_name: channel_name || 'general'
     });
 
     if (insertError) {

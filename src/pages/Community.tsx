@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Users, Send, ExternalLink, MessageCircle, Globe } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Users, Send, ExternalLink, MessageCircle, Globe, X, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { TelegramLoginWidget } from '../components/TelegramLoginWidget';
@@ -13,6 +13,7 @@ interface Community {
   description: string;
   telegram_chat_id: string | null;
   telegram_invite_link: string | null;
+  user_role?: string;
 }
 
 interface CommunityMessage {
@@ -23,8 +24,28 @@ interface CommunityMessage {
   sender_name: string;
   sender_username: string | null;
   content: string;
+  channel_name: string;
   created_at: string;
 }
+
+const NETWORK_TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'announcements', label: '📢 Announcements' },
+  { id: 'networking', label: '🤝 Networking' },
+  { id: 'opportunities', label: '💼 Opportunities' },
+  { id: 'events', label: '📅 Events' },
+  { id: 'wins', label: '🎉 Wins' },
+  { id: 'ask-the-community', label: '❓ Ask the Community' },
+  { id: 'members', label: 'Members' }
+];
+
+const COURSE_TABS = [
+  { id: 'discussion', label: 'Discussion' },
+  { id: 'resources', label: 'Resources' },
+  { id: 'assignments', label: 'Assignments' },
+  { id: 'live-qa', label: 'Live Q&A' },
+  { id: 'members', label: 'Members' }
+];
 
 export function Community() {
   const { user } = useAuth();
@@ -33,13 +54,18 @@ export function Community() {
   const [telegramUsername, setTelegramUsername] = useState<string | null>(null);
   const [communities, setCommunities] = useState<Community[]>([]);
   const [activeCommunityId, setActiveCommunityId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('overview');
 
   const [messages, setMessages] = useState<CommunityMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showWelcome, setShowWelcome] = useState(true);
 
   const activeCommunity = communities.find(c => c.id === activeCommunityId);
+
+  const isAdminOnlyTab = ['announcements', 'events', 'assignments'].includes(activeTab);
+  const canPost = !isAdminOnlyTab || activeCommunity?.user_role === 'ADMIN';
 
   useEffect(() => {
     if (!user) return;
@@ -63,6 +89,7 @@ export function Community() {
         .from('community_members')
         .select(`
           community_id,
+          role,
           communities (
             id, name, slug, community_type, description, telegram_chat_id, telegram_invite_link
           )
@@ -70,25 +97,30 @@ export function Community() {
         .eq('user_id', user.id);
 
       if (data) {
-        // filter out null communities (in case of orphaned rows) and flatten
-        const comms = data.map(d => d.communities).filter(Boolean) as unknown as Community[];
-        
-        // Remove duplicates if any (due to any weird joins)
+        const comms = data.map(d => {
+          if (d.communities) {
+            (d.communities as any).user_role = d.role;
+          }
+          return d.communities;
+        }).filter(Boolean) as unknown as Community[];
         const uniqueComms = Array.from(new Map(comms.map(c => [c.id, c])).values());
-        
         setCommunities(uniqueComms);
 
         if (uniqueComms.length > 0) {
-          // Select network or first course
           const network = uniqueComms.find(c => c.community_type === 'GENERAL');
-          setActiveCommunityId(network ? network.id : uniqueComms[0].id);
+          const defaultComm = network ? network : uniqueComms[0];
+          setActiveCommunityId(defaultComm.id);
+          setActiveTab(defaultComm.community_type === 'GENERAL' ? 'overview' : 'discussion');
         }
       }
     };
     fetchCommunities();
+    
+    const welcomeSeen = localStorage.getItem(`welcome_seen_${user.id}`);
+    if (welcomeSeen) setShowWelcome(false);
   }, [user]);
 
-  // Load messages when active community changes
+  // Load messages when active community OR active tab changes
   useEffect(() => {
     if (!activeCommunityId) {
       setMessages([]);
@@ -100,6 +132,7 @@ export function Community() {
         .from('community_messages')
         .select('*')
         .eq('community_id', activeCommunityId)
+        .eq('channel_name', activeTab)
         .order('created_at', { ascending: true })
         .limit(100);
 
@@ -113,7 +146,7 @@ export function Community() {
 
     // Subscribe to new messages
     const channel = supabase
-      .channel(`community_${activeCommunityId}`)
+      .channel(`community_${activeCommunityId}_${activeTab}`)
       .on(
         'postgres_changes',
         {
@@ -123,8 +156,12 @@ export function Community() {
           filter: `community_id=eq.${activeCommunityId}`,
         },
         (payload) => {
-          setMessages(prev => [...prev, payload.new as CommunityMessage]);
-          setTimeout(scrollToBottom, 100);
+          const newMsg = payload.new as CommunityMessage;
+          // Filter by active tab
+          if (newMsg.channel_name === activeTab || (!newMsg.channel_name && activeTab === 'general')) {
+            setMessages(prev => [...prev, newMsg]);
+            setTimeout(scrollToBottom, 100);
+          }
         }
       )
       .subscribe();
@@ -132,7 +169,7 @@ export function Community() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeCommunityId]);
+  }, [activeCommunityId, activeTab]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -172,7 +209,6 @@ export function Community() {
     e.preventDefault();
     if (!newMessage.trim() || !user || !activeCommunityId || !hasConnectedTelegram) return;
     
-    // Check if the community has telegram linked (if not, maybe internal message? The endpoint currently assumes Telegram)
     if (!activeCommunity?.telegram_chat_id) {
       alert('This community is not linked to a Telegram group yet.');
       return;
@@ -187,6 +223,7 @@ export function Community() {
           user_id: user.id,
           community_id: activeCommunityId,
           text: newMessage,
+          channel_name: activeTab
         }),
       });
 
@@ -204,15 +241,20 @@ export function Community() {
     }
   };
 
+  const dismissWelcome = () => {
+    if (user) localStorage.setItem(`welcome_seen_${user.id}`, 'true');
+    setShowWelcome(false);
+  };
+
   const generalCommunities = communities.filter(c => c.community_type === 'GENERAL');
   const courseCommunities = communities.filter(c => c.community_type === 'COURSE');
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-full flex flex-col">
-      <div className="mb-8 shrink-0 flex items-center justify-between">
+      <div className="mb-6 shrink-0 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">Community</h1>
-          <p className="text-white/60">Connect with other learners and stay updated.</p>
+          <p className="text-white/60">Your academy hub and course discussions.</p>
         </div>
         {hasConnectedTelegram && telegramUsername && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full">
@@ -223,6 +265,36 @@ export function Community() {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {showWelcome && communities.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 p-6 rounded-2xl mb-8 shrink-0 relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+            <button onClick={dismissWelcome} className="absolute top-4 right-4 text-white/50 hover:text-white">
+              <X size={20} />
+            </button>
+            
+            <h2 className="text-2xl font-bold text-white mb-4">🎉 Welcome to PDS Academy!</h2>
+            <p className="text-white/80 mb-4 max-w-2xl">
+              You've officially joined the family. Your enrollments have unlocked the following communities. Head over to the Network and introduce yourself!
+            </p>
+            
+            <div className="flex flex-wrap gap-3">
+              {communities.map(c => (
+                <div key={c.id} className="flex items-center gap-2 bg-black/40 border border-white/10 px-4 py-2 rounded-lg">
+                  <CheckCircle2 size={16} className="text-green-400" />
+                  <span className="text-white font-medium">{c.name}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {hasConnectedTelegram === false && (
         <div className="bg-[#111113] border border-blue-500/30 p-6 rounded-2xl mb-8 shrink-0 flex flex-col items-center text-center">
@@ -258,7 +330,10 @@ export function Community() {
                 {generalCommunities.map(comm => (
                   <button
                     key={comm.id}
-                    onClick={() => setActiveCommunityId(comm.id)}
+                    onClick={() => {
+                      setActiveCommunityId(comm.id);
+                      setActiveTab('overview');
+                    }}
                     className={`w-full text-left p-3 rounded-xl transition-colors flex items-center gap-3 ${activeCommunityId === comm.id
                         ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                         : 'text-white hover:bg-white/5 border border-transparent'
@@ -279,7 +354,10 @@ export function Community() {
                 {courseCommunities.map(comm => (
                   <button
                     key={comm.id}
-                    onClick={() => setActiveCommunityId(comm.id)}
+                    onClick={() => {
+                      setActiveCommunityId(comm.id);
+                      setActiveTab('discussion');
+                    }}
                     className={`w-full text-left p-3 rounded-xl transition-colors flex items-center gap-3 ${activeCommunityId === comm.id
                         ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                         : 'text-white hover:bg-white/5 border border-transparent'
@@ -298,82 +376,113 @@ export function Community() {
 
           {/* Main Chat Area */}
           <div className="flex-1 bg-[#111113] border border-white/5 rounded-2xl flex flex-col overflow-hidden">
+            
             {/* Chat Header */}
             {activeCommunity && (
-              <div className="h-16 border-b border-white/5 px-6 flex items-center justify-between shrink-0 bg-[#0a0a0c]">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center">
-                    {activeCommunity.community_type === 'GENERAL' ? <Globe className="text-blue-500" size={20} /> : <Users className="text-blue-500" size={20} />}
+              <div className="border-b border-white/5 shrink-0 bg-[#0a0a0c]">
+                <div className="px-6 py-5 flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 mt-1 bg-blue-500/10 rounded-xl flex items-center justify-center shrink-0">
+                      {activeCommunity.community_type === 'GENERAL' ? <Globe className="text-blue-500" size={24} /> : <Users className="text-blue-500" size={24} />}
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-lg text-white mb-1">{activeCommunity.name}</h2>
+                      <p className="text-sm text-white/60 max-w-xl leading-relaxed">
+                        {activeCommunity.description || (
+                          activeCommunity.community_type === 'GENERAL' 
+                            ? 'Connect with every learner across PDS Academy. Discover opportunities, events, announcements, and build professional relationships.'
+                            : 'Discuss lessons, ask questions, share projects, and collaborate with fellow learners in this course.'
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-semibold text-white">{activeCommunity.name}</h2>
-                    <p className="text-xs text-white/50">{activeCommunity.community_type === 'GENERAL' ? 'Global Network' : 'Course Community'}</p>
-                  </div>
+
+                  {activeCommunity.telegram_invite_link && (
+                    <a
+                      href={activeCommunity.telegram_invite_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      <ExternalLink size={16} />
+                      <span className="hidden sm:inline">Telegram Group</span>
+                    </a>
+                  )}
                 </div>
 
-                {activeCommunity.telegram_invite_link && (
-                  <a
-                    href={activeCommunity.telegram_invite_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    <ExternalLink size={16} />
-                    <span className="hidden sm:inline">Join Group</span>
-                  </a>
-                )}
+                {/* Sub-Tabs */}
+                <div className="flex items-center gap-6 px-6 overflow-x-auto hide-scrollbar">
+                  {(activeCommunity.community_type === 'GENERAL' ? NETWORK_TABS : COURSE_TABS).map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id ? 'border-blue-500 text-blue-400' : 'border-transparent text-white/50 hover:text-white'}`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* Chat Messages */}
-            <div className="flex-1 p-6 overflow-y-auto space-y-4">
-              {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-white/40 text-sm">
-                  No messages yet. Send a message to start the conversation!
+            {/* Content Area (Chat Messages or Placeholder for static tabs) */}
+            {activeTab === 'members' ? (
+              <div className="flex-1 p-6 flex flex-col items-center justify-center text-white/40">
+                <Users size={48} className="mb-4 opacity-20" />
+                <p>Member directory coming soon.</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex-1 p-6 overflow-y-auto space-y-4">
+                  {messages.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-white/40 text-sm">
+                      No messages in {activeTab.replace('-', ' ')} yet. Start the conversation!
+                    </div>
+                  ) : (
+                    messages.map((msg) => (
+                      <div key={msg.id} className="flex gap-4 group">
+                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0 overflow-hidden text-white/50 font-bold">
+                          {msg.sender_name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-baseline gap-2 mb-1">
+                            <span className="font-medium text-white text-sm">{msg.sender_name}</span>
+                            <span className="text-xs text-white/40">
+                              {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap bg-white/5 p-3 rounded-2xl rounded-tl-sm inline-block">
+                            {msg.content}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={messagesEndRef} />
                 </div>
-              ) : (
-                messages.map((msg) => (
-                  <div key={msg.id} className="flex gap-4 group">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0 overflow-hidden text-white/50 font-bold">
-                      {msg.sender_name?.[0]?.toUpperCase() || '?'}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-baseline gap-2 mb-1">
-                        <span className="font-medium text-white text-sm">{msg.sender_name}</span>
-                        <span className="text-xs text-white/40">
-                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <div className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap bg-white/5 p-3 rounded-2xl rounded-tl-sm inline-block">
-                        {msg.content}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-              <div ref={messagesEndRef} />
-            </div>
 
-            {/* Chat Input */}
-            <div className="p-4 border-t border-white/5 bg-[#0a0a0c]">
-              <form onSubmit={handleSendMessage} className="relative">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder={hasConnectedTelegram ? "Send a message..." : "Connect Telegram to send messages"}
-                  disabled={!hasConnectedTelegram || isSending || !activeCommunity?.telegram_chat_id}
-                  className="w-full bg-[#111113] border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm text-white placeholder-white/40 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 transition-all"
-                />
-                <button
-                  type="submit"
-                  disabled={!newMessage.trim() || !hasConnectedTelegram || isSending || !activeCommunity?.telegram_chat_id}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-white/10 disabled:text-white/30 text-white rounded-lg transition-colors"
-                >
-                  <Send size={16} className={isSending ? 'opacity-50' : ''} />
-                </button>
-              </form>
-            </div>
+                {/* Chat Input */}
+                <div className="p-4 border-t border-white/5 bg-[#0a0a0c]">
+                  <form onSubmit={handleSendMessage} className="relative">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder={hasConnectedTelegram ? (canPost ? `Message in #${activeTab.replace('-', ' ')}...` : "Only admins can post here") : "Connect Telegram to send messages"}
+                      disabled={!hasConnectedTelegram || isSending || !activeCommunity?.telegram_chat_id || !canPost}
+                      className="w-full bg-[#111113] border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm text-white placeholder-white/40 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 transition-all"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!newMessage.trim() || !hasConnectedTelegram || isSending || !activeCommunity?.telegram_chat_id || !canPost}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-white/10 disabled:text-white/30 text-white rounded-lg transition-colors"
+                    >
+                      <Send size={16} className={isSending ? 'opacity-50' : ''} />
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

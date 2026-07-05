@@ -241,6 +241,21 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_transactions TO authentic
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_transactions TO anon;
 
 -- 6. Course Telegram Messages Table
+CREATE TABLE IF NOT EXISTS public.community_messages (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  community_id uuid REFERENCES public.communities(id) ON DELETE CASCADE NOT NULL,
+  provider text NOT NULL DEFAULT 'INTERNAL' CHECK (provider IN ('INTERNAL', 'TELEGRAM')),
+  telegram_message_id text,
+  sender_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  sender_name text NOT NULL,
+  sender_username text,
+  content text NOT NULL,
+  channel_name text DEFAULT 'general' NOT NULL,
+  is_deleted boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(community_id, provider, telegram_message_id)
+);
+
 create table if not exists public.course_telegram_messages (
   id uuid default gen_random_uuid() primary key,
   course_id text not null,
