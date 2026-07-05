@@ -60,6 +60,8 @@ export function Community() {
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Prevent fetchCommunities from resetting the active community on every auth token refresh
+  const hasInitialized = useRef(false);
 
   const activeCommunity = communities.find(c => c.id === activeCommunityId);
 
@@ -105,7 +107,9 @@ export function Community() {
         const uniqueComms = Array.from(new Map(comms.map(c => [c.id, c])).values());
         setCommunities(uniqueComms);
 
-        if (uniqueComms.length > 0) {
+        // Only set the default community on first load — never override the user's selection
+        if (uniqueComms.length > 0 && !hasInitialized.current) {
+          hasInitialized.current = true;
           const network = uniqueComms.find(c => c.community_type === 'GENERAL');
           const defaultComm = network ? network : uniqueComms[0];
           setActiveCommunityId(defaultComm.id);
@@ -224,29 +228,41 @@ export function Community() {
     e.preventDefault();
     if (!newMessage.trim() || !user || !activeCommunityId || !hasConnectedTelegram) return;
 
-    if (!activeCommunity?.telegram_chat_id) {
-      alert('This community is not linked to a Telegram group yet.');
-      return;
-    }
-
     setIsSending(true);
     try {
-      const res = await fetch('/api/telegram/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user.id,
-          community_id: activeCommunityId,
-          text: newMessage,
-          channel_name: channelName
-        }),
-      });
-
-      const data = await res.json();
-      if (data.ok) {
-        setNewMessage('');
+      if (activeCommunity?.telegram_chat_id) {
+        // Community has a Telegram group — relay through Telegram bot
+        const res = await fetch('/api/telegram/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: user.id,
+            community_id: activeCommunityId,
+            text: newMessage,
+            channel_name: channelName
+          }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          setNewMessage('');
+        } else {
+          alert(data.error || 'Failed to send message');
+        }
       } else {
-        alert(data.error || 'Failed to send message');
+        // No Telegram group — save directly to community_messages
+        const { error } = await supabase.from('community_messages').insert({
+          community_id: activeCommunityId,
+          provider: 'INTERNAL',
+          sender_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Member',
+          sender_username: null,
+          content: newMessage,
+          channel_name: channelName,
+        });
+        if (error) {
+          alert('Failed to send message: ' + error.message);
+        } else {
+          setNewMessage('');
+        }
       }
     } catch (err) {
       console.error(err);
@@ -448,12 +464,12 @@ export function Community() {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder={hasConnectedTelegram ? (canPost ? `Message in #${activeTab.replace(/-/g, ' ')}...` : "Only admins can post here") : "Connect Telegram to send messages"}
-                    disabled={!hasConnectedTelegram || isSending || !activeCommunity?.telegram_chat_id || !canPost}
+                    disabled={!hasConnectedTelegram || isSending || !canPost}
                     className="w-full bg-[#111113] border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm text-white placeholder-white/40 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 transition-all"
                   />
                   <button
                     type="submit"
-                    disabled={!newMessage.trim() || !hasConnectedTelegram || isSending || !activeCommunity?.telegram_chat_id || !canPost}
+                    disabled={!newMessage.trim() || !hasConnectedTelegram || isSending || !canPost}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-white/10 disabled:text-white/30 text-white rounded-lg transition-colors"
                   >
                     <Send size={16} className={isSending ? 'opacity-50' : ''} />
