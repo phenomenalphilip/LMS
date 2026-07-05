@@ -11,10 +11,15 @@ export function Portfolio() {
   const { courses } = useCourses();
   const navigate = useNavigate();
   const [completedCourses, setCompletedCourses] = useState<any[]>([]);
+  const [dbProfile, setDbProfile] = useState<any>(null);
 
   useEffect(() => {
     async function loadCertificates() {
       if (!user) return;
+      
+      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      if (profileData) setDbProfile(profileData);
+
       const { data: progressData } = await supabase.from('lesson_progress').select('course_id').eq('user_id', user.id).eq('completed', true);
       
       const progressCounts = (progressData || []).reduce((acc: any, curr: any) => {
@@ -50,7 +55,7 @@ export function Portfolio() {
     return <Navigate to="/login" replace />;
   }
 
-  const profile = user.user_metadata || {};
+  const profile = { ...(user.user_metadata || {}), ...(dbProfile || {}) };
   const isPublic = profile.is_public;
 
   return (
