@@ -38,6 +38,13 @@ export function PublicPortfolio() {
              profileData = authData.user.user_metadata;
              profileData.id = authData.user.id;
           }
+        } else {
+          // If we found the DB profile, but it has no avatar (older users), and we are the owner, fallback to auth metadata
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData?.user?.id === profileData.id) {
+             profileData.avatar_url = profileData.avatar_url || authData.user.user_metadata?.avatar_url;
+             profileData.full_name = profileData.full_name || authData.user.user_metadata?.full_name;
+          }
         }
 
         if (profileData && profileData.is_public !== false) {

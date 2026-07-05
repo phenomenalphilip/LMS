@@ -55,7 +55,15 @@ export function Portfolio() {
     return <Navigate to="/login" replace />;
   }
 
-  const profile = { ...(user.user_metadata || {}), ...(dbProfile || {}) };
+  const profile = { 
+    ...(user.user_metadata || {}), 
+    ...(dbProfile || {}) 
+  };
+  
+  // If the database has null for these fields (e.g. older users), fallback to the auth metadata (Google/GitHub avatar)
+  profile.avatar_url = dbProfile?.avatar_url || user.user_metadata?.avatar_url;
+  profile.full_name = dbProfile?.full_name || user.user_metadata?.full_name;
+
   const isPublic = profile.is_public;
 
   return (
