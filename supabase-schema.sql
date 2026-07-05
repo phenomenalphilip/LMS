@@ -255,6 +255,33 @@ CREATE TABLE IF NOT EXISTS public.community_messages (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   UNIQUE(community_id, provider, channel_name, telegram_message_id));
 
+-- Enable RLS on community_messages
+ALTER TABLE public.community_messages ENABLE ROW LEVEL SECURITY;
+
+-- Members of a community can read its messages
+DROP POLICY IF EXISTS "Community members can view messages." ON community_messages;
+CREATE POLICY "Community members can view messages."
+  ON community_messages FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.community_members cm
+      WHERE cm.community_id = community_messages.community_id
+        AND cm.user_id = auth.uid()
+    )
+  );
+
+-- Members can insert messages into their own communities
+DROP POLICY IF EXISTS "Community members can insert messages." ON community_messages;
+CREATE POLICY "Community members can insert messages."
+  ON community_messages FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.community_members cm
+      WHERE cm.community_id = community_messages.community_id
+        AND cm.user_id = auth.uid()
+    )
+  );
+
 create table if not exists public.course_telegram_messages (
   id uuid default gen_random_uuid() primary key,
   course_id text not null,
@@ -303,6 +330,19 @@ BEGIN
     AND tablename = 'course_telegram_messages'
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.course_telegram_messages;
+  END IF;
+END $$;
+
+-- Enable Realtime for community_messages (NEW communities system)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'community_messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.community_messages;
   END IF;
 END $$;
 

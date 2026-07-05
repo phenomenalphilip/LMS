@@ -204,25 +204,35 @@ app.post("/api/webhooks/telegram", async (req, res) => {
     const chatId = String(msg.chat.id);
     const messageId = String(msg.message_id);
     const text = msg.text || msg.caption;
+    const fromUser = msg.from ? `${msg.from.first_name || ''} ${msg.from.last_name || ''}`.trim() : 'unknown';
 
-    console.log(`Telegram webhook: chatId=${chatId}, text="${text?.substring(0, 50)}"`);
+    console.log(`[TG WEBHOOK] Received message`);
+    console.log(`[TG WEBHOOK] chatId="${chatId}" | messageId="${messageId}" | from="${fromUser}"`);
+    console.log(`[TG WEBHOOK] text="${text?.substring(0, 100) ?? '(no text)'}"`);
 
-    if (!text) return res.status(200).send("OK");
+    if (!text) {
+      console.log(`[TG WEBHOOK] Skipping — no text content`);
+      return res.status(200).send("OK");
+    }
 
     const supabase = getAdminSupabase();
 
+    console.log(`[TG WEBHOOK] Looking up community with telegram_chat_id="${chatId}"...`);
     const { data: matchedCommunities, error: lookupError } = await supabase
       .from('communities')
-      .select('id')
+      .select('id, name, telegram_chat_id')
       .eq('telegram_chat_id', chatId);
 
     if (lookupError) {
-      console.error(`Communities lookup failed for chatId="${chatId}":`, JSON.stringify(lookupError));
-      return res.status(200).send("OK"); // ack to Telegram; do not retry on DB error
+      console.error(`[TG WEBHOOK] DB lookup ERROR:`, JSON.stringify(lookupError));
+      return res.status(200).send("OK");
     }
 
+    console.log(`[TG WEBHOOK] DB lookup result: ${matchedCommunities?.length ?? 0} communities found`);
     if (matchedCommunities && matchedCommunities.length > 0) {
       for (const community of matchedCommunities) {
+        console.log(`[TG WEBHOOK] Matched community: "${community.name}" (id=${community.id})`);
+
         // Attempt to derive channel from reply thread scoped to this community
         let derivedChannel = 'general';
 
@@ -235,6 +245,7 @@ app.post("/api/webhooks/telegram", async (req, res) => {
             .single();
           if (parentMsg && parentMsg.channel_name) {
             derivedChannel = parentMsg.channel_name;
+            console.log(`[TG WEBHOOK] Derived channel from reply: "${derivedChannel}"`);
           }
         }
 
@@ -243,39 +254,61 @@ app.post("/api/webhooks/telegram", async (req, res) => {
           const lowerText = text.toLowerCase();
           for (const ch of VALID_CHANNELS) {
             if (lowerText.includes(`#${ch.replace(/-/g, '')}`) || lowerText.includes(`#${ch}`)) {
-              derivedChannel = ch; break;
+              derivedChannel = ch;
+              console.log(`[TG WEBHOOK] Derived channel from hashtag: "${derivedChannel}"`);
+              break;
             }
           }
         }
-        
-        const finalChannel = CHANNEL_ALIASES[derivedChannel] || derivedChannel;
 
-        const { error: insertErr } = await supabase.from("community_messages").upsert({
+        const finalChannel = CHANNEL_ALIASES[derivedChannel] || derivedChannel;
+        console.log(`[TG WEBHOOK] Saving to channel="${finalChannel}" for community "${community.name}"`);
+
+        const { error: insertErr } = await supabase.from("community_messages").insert({
           community_id: community.id,
           provider: 'TELEGRAM',
           telegram_message_id: messageId,
-          sender_name: [msg.from.first_name, msg.from.last_name].filter(Boolean).join(" ") || "Unknown",
-          sender_username: msg.from.username || null,
+          sender_name: [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(" ") || "Unknown",
+          sender_username: msg.from?.username || null,
           content: text,
           channel_name: finalChannel
-        }, { onConflict: 'community_id,provider,channel_name,telegram_message_id', ignoreDuplicates: true });
+        });
 
         if (insertErr) {
-          console.error(`Failed to save Telegram message for community ${community.id}:`, JSON.stringify(insertErr));
+          // Code 23505 = unique_violation (duplicate message) — safe to ignore
+          if (insertErr.code === '23505') {
+            console.log(`[TG WEBHOOK] Duplicate message ${messageId} — skipped`);
+          } else {
+            console.error(`[TG WEBHOOK] INSERT ERROR for community "${community.name}":`, JSON.stringify(insertErr));
+          }
         } else {
-          console.log(`Saved Telegram message for community ${community.id}`);
+          console.log(`[TG WEBHOOK] ✅ Saved message for community "${community.name}" channel="${finalChannel}"`);
         }
+
       }
     } else {
-      console.warn(`No community found in Supabase for telegram_chat_id="${chatId}"`);
+      // ── NO MATCH: Log all communities so we can spot the mismatch ──
+      console.warn(`[TG WEBHOOK] ❌ No community matched telegram_chat_id="${chatId}"`);
+      const { data: allComms } = await supabase
+        .from('communities')
+        .select('name, telegram_chat_id');
+      if (allComms && allComms.length > 0) {
+        console.warn(`[TG WEBHOOK] Communities in DB (check for chatId mismatch):`);
+        for (const c of allComms) {
+          console.warn(`  • "${c.name}" → telegram_chat_id="${c.telegram_chat_id}"`);
+        }
+      } else {
+        console.warn(`[TG WEBHOOK] No communities exist in the DB at all!`);
+      }
     }
 
     res.status(200).send("OK");
   } catch (err) {
-    console.error("Telegram webhook error:", err);
+    console.error("[TG WEBHOOK] Unhandled error:", err);
     res.status(500).send("Error processing webhook");
   }
 });
+
 
 
 // ── Telegram Connect ────────────────────────────────────────────────────────
