@@ -36,6 +36,7 @@ export type Module = {
 export type Course = {
   id: string;
   slug?: string;
+  startDate?: string;
   category?: string;
   description?: string;
   details?: any;
@@ -90,6 +91,7 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
           const mapped: Course[] = sanityCourses.map((c: any) => ({
             id: c._id,
             slug: c.slug,
+            startDate: c.startDate,
             category: c.category,
             description: c.description,
             details: c.details,

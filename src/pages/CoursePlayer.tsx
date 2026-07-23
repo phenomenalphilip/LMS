@@ -104,6 +104,27 @@ export function CoursePlayer() {
     );
   }
 
+  const isPreEnrollment = course?.startDate ? new Date(course.startDate).getTime() > Date.now() : false;
+  const startDateFormatted = course?.startDate ? new Date(course.startDate).toLocaleDateString() : '';
+
+  if (isPreEnrollment) {
+    return (
+      <div className="flex-col min-h-[calc(100vh-4rem)] flex items-center justify-center p-8 bg-[#09090b]">
+        <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-6">
+          <PlayCircle size={32} className="text-white" />
+        </div>
+        <h2 className="text-3xl font-bold text-white mb-4 text-center">Course Starts Soon</h2>
+        <p className="text-white/60 mb-8 max-w-md text-center leading-relaxed">
+          You are successfully enrolled! This course officially begins on <span className="text-white font-medium">{startDateFormatted}</span>. 
+          Please check back then to access your lessons and materials.
+        </p>
+        <Link to="/app/my-courses" className="px-6 py-3 bg-white text-black font-semibold rounded-full hover:bg-gray-200 transition-colors">
+          Return to My Courses
+        </Link>
+      </div>
+    );
+  }
+
   const handleNext = () => {
     if (activeItemIndex < allItems.length - 1) {
       setActiveItemIndex(activeItemIndex + 1);

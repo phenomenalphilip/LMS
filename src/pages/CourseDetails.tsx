@@ -19,6 +19,9 @@ export function CourseDetails() {
   const [expandedModules, setExpandedModules] = useState<number[]>([]);
   
   const course = courses.find((c) => c.id === courseId);
+  
+  const isPreEnrollment = course?.startDate ? new Date(course.startDate).getTime() > Date.now() : false;
+  const startDateFormatted = course?.startDate ? new Date(course.startDate).toLocaleDateString() : '';
 
   useEffect(() => {
     async function checkEnrollment() {
@@ -86,6 +89,14 @@ export function CourseDetails() {
     }
   };
 
+  const getButtonText = () => {
+    if (checkingEnrollment) return 'Checking...';
+    if (isEnrolled) {
+      return isPreEnrollment ? `Course Starts ${startDateFormatted}` : 'Continue to Class';
+    }
+    return isPreEnrollment ? `Pre-enroll for $${course.price.usd} (Starts ${startDateFormatted})` : `Enroll for $${course.price.usd}`;
+  };
+
   const toggleModule = (index: number) => {
     if (expandedModules.includes(index)) {
       setExpandedModules(expandedModules.filter(i => i !== index));
@@ -140,7 +151,7 @@ export function CourseDetails() {
               disabled={checkingEnrollment}
               className="px-8 py-3.5 bg-white text-black font-semibold rounded-full hover:bg-gray-200 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <PlayCircle size={18} /> {checkingEnrollment ? 'Checking...' : isEnrolled ? 'Continue to Class' : `Enroll for $${course.price.usd}`}
+              <PlayCircle size={18} /> {getButtonText()}
             </button>
             <div className="text-white/40 text-sm">
               6 Months Flexible Access

@@ -1,9 +1,10 @@
 import { motion } from 'motion/react';
-import { User, Bell, Shield, Upload, Globe } from 'lucide-react';
+import { User, Bell, Shield, Upload, Globe, MessageSquare } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getData as getCountries } from 'country-list';
+import { TelegramLoginWidget } from '../components/TelegramLoginWidget';
 
 const industriesList = [
   "Finance & Banking",
@@ -46,6 +47,9 @@ export function Account() {
   const [linkedin, setLinkedin] = useState('');
   const [twitter, setTwitter] = useState('');
   const [website, setWebsite] = useState('');
+
+  const [telegramUsername, setTelegramUsername] = useState('');
+  const [telegramConnected, setTelegramConnected] = useState(false);
 
   const [avatarUrl, setAvatarUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -110,12 +114,16 @@ export function Account() {
       setTwitter(user.user_metadata?.twitter || '');
       setWebsite(user.user_metadata?.website || '');
       
-      // Fetch avatar from profiles table to avoid hitting JWT size limits
-      supabase.from('profiles').select('avatar_url').eq('id', user.id).single().then(({ data }) => {
+      // Fetch avatar and integrations from profiles table
+      supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
         if (data?.avatar_url) {
           setAvatarUrl(data.avatar_url);
         } else {
           setAvatarUrl(user.user_metadata?.avatar_url || '');
+        }
+        if (data?.telegram_chat_id) {
+          setTelegramConnected(true);
+          setTelegramUsername(data.telegram_username || '');
         }
       });
     }
@@ -229,6 +237,24 @@ export function Account() {
     } else {
       setProfileMessage('Profile saved successfully');
     }
+  };
+
+  const handleDisconnectTelegram = async () => {
+    setTelegramConnected(false);
+    setTelegramUsername('');
+    await supabase.from('profiles').update({ 
+      telegram_chat_id: null, 
+      telegram_username: null 
+    }).eq('id', user?.id);
+  };
+
+  const handleConnectTelegram = async (telegramUser: any) => {
+    setTelegramConnected(true);
+    setTelegramUsername(telegramUser.username || telegramUser.first_name);
+    await supabase.from('profiles').update({ 
+      telegram_chat_id: telegramUser.id.toString(), 
+      telegram_username: telegramUser.username || telegramUser.first_name 
+    }).eq('id', user?.id);
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -592,6 +618,47 @@ export function Account() {
                   {passwordMessage && <span className="text-sm text-white/60">{passwordMessage}</span>}
                 </div>
               </form>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Integrations */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          className="bg-[#111113] border border-white/10 rounded-2xl overflow-hidden"
+        >
+          <div className="p-6 md:p-8 flex flex-col md:flex-row gap-8">
+            <div className="w-full md:w-1/3">
+              <div className="flex items-center gap-3 mb-2 text-white">
+                <MessageSquare size={20} className="text-[#0088cc]" />
+                <h3 className="font-medium text-lg">Integrations</h3>
+              </div>
+              <p className="text-sm text-white/50">Connect third-party accounts like Telegram.</p>
+            </div>
+            
+            <div className="flex-1">
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                <div>
+                  <h4 className="text-sm font-medium text-white">Telegram Account</h4>
+                  <p className="text-xs text-white/50 mt-1">
+                    {telegramConnected 
+                      ? `Connected as @${telegramUsername}` 
+                      : 'Connect to sync community messages.'}
+                  </p>
+                </div>
+                {telegramConnected ? (
+                  <button 
+                    onClick={handleDisconnectTelegram}
+                    className="px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <TelegramLoginWidget onAuth={handleConnectTelegram} />
+                )}
+              </div>
             </div>
           </div>
         </motion.div>

@@ -11,6 +11,12 @@ export const schemaTypes = [
         validation: (Rule: any) => Rule.required(),
       },
       {
+        name: 'startDate',
+        title: 'Start Date',
+        type: 'datetime',
+        description: 'If set in the future, the course will be in pre-enrollment mode and content will be locked until this date.',
+      },
+      {
         name: 'slug',
         title: 'Slug',
         type: 'slug',

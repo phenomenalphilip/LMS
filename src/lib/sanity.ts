@@ -10,6 +10,7 @@ export const sanityClient = createClient({
 export const coursesQuery = `*[_type == "course"]{
   _id,
   title,
+  startDate,
   category,
   "slug": slug.current,
   description,
