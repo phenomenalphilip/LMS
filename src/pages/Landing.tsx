@@ -108,7 +108,10 @@ export function Landing() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.slice(0, 3).map((course, i) => (
+            {courses.slice(0, 3).map((course, i) => {
+              const isPreEnrollment = course?.startDate ? new Date(course.startDate).getTime() > Date.now() : false;
+              
+              return (
               <motion.div
                 key={course.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -117,7 +120,7 @@ export function Landing() {
                 transition={{ duration: 0.4, delay: i * 0.1 }}
                 className="flex flex-col bg-[#111113] border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition-all group"
               >
-                <Link to={`/course/${course.id}`} className="aspect-[16/10] relative overflow-hidden bg-white/5 block">
+                <Link to={`/c/${course.slug}`} className="aspect-[16/10] relative overflow-hidden bg-white/5 block">
                   <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#111113] via-[#111113]/20 to-transparent" />
                   <div className="absolute top-4 right-4 flex gap-2">
@@ -133,7 +136,7 @@ export function Landing() {
                 </Link>
 
                 <div className="p-6 flex-1 flex flex-col">
-                  <Link to={`/course/${course.id}`} className="hover:text-blue-400 transition-colors">
+                  <Link to={`/c/${course.slug}`} className="hover:text-blue-400 transition-colors">
                     <h3 className="font-semibold text-lg text-white mb-2 leading-snug">{course.title}</h3>
                   </Link>
                   <p className="text-sm text-white/50 mb-6 flex-1">Instructor: {course.instructor}</p>
@@ -152,12 +155,12 @@ export function Landing() {
                       to={`/checkout/${course.id}`}
                       className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full transition-all active:scale-95 bg-white text-black hover:bg-gray-200"
                     >
-                      Enroll
+                      {isPreEnrollment ? 'Pre-enroll' : 'Enroll'}
                     </Link>
                   </div>
                 </div>
               </motion.div>
-            ))}
+            )})}
           </div>
         </div>
       </section>

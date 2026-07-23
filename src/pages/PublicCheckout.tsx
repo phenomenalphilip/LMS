@@ -110,6 +110,9 @@ export function PublicCheckout() {
 
   const course = courses.find(c => c.id === courseId);
 
+  const isPreEnrollment = course?.startDate ? new Date(course.startDate).getTime() > Date.now() : false;
+  const startDateFormatted = course?.startDate ? new Date(course.startDate).toLocaleDateString() : '';
+
   // ── Fetch saved tokenized cards ─────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
@@ -454,7 +457,7 @@ export function PublicCheckout() {
               {isProcessing ? (
                 <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
               ) : (
-                <>Pay {currency === 'NGN' ? `₦${course.price?.ngn?.toLocaleString()}` : `$${course.price?.usd}`} <ArrowRight size={18} /></>
+                <>{isPreEnrollment ? 'Pre-order' : 'Pay'} {currency === 'NGN' ? `₦${course.price?.ngn?.toLocaleString()}` : `$${course.price?.usd}`} <ArrowRight size={18} /></>
               )}
             </button>
 
@@ -591,6 +594,17 @@ export function PublicCheckout() {
           </div>
 
           <h2 className="text-2xl font-semibold text-white mb-2 leading-snug">{course?.title}</h2>
+          
+          {isPreEnrollment && (
+            <div className="mb-4 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
+              <AlertCircle className="text-blue-400 shrink-0 mt-0.5" size={18} />
+              <div>
+                <h4 className="text-sm font-semibold text-blue-400 mb-1">Pre-enrollment</h4>
+                <p className="text-xs text-blue-400/80">You are pre-ordering this course. The content will be locked until the official start date on <span className="font-semibold text-white">{startDateFormatted}</span>.</p>
+              </div>
+            </div>
+          )}
+
           <p className="text-white/50 text-sm mb-8 leading-relaxed">
             By completing this enrollment, you get 6 months access to all modules, downloadable resources, and updates within this masterclass.
           </p>

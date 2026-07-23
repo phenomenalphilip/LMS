@@ -4,6 +4,7 @@ import { Dashboard } from './pages/Dashboard';
 import { CoursePlayer } from './pages/CoursePlayer';
 import { Catalog } from './pages/Catalog';
 import { CourseDetails } from './pages/CourseDetails';
+import { CourseSalesPage } from './pages/CourseSalesPage';
 import { MyCourses } from './pages/MyCourses';
 import { Certifications } from './pages/Certifications';
 import { Certificate } from './pages/Certificate';
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/p/:username" element={<PublicPortfolio />} />
+            <Route path="/c/:slug" element={<CourseSalesPage />} />
             <Route path="/course/:courseId" element={<CourseDetails />} />
             <Route path="/checkout/:courseId" element={<PublicCheckout />} />
             <Route path="/studio/*" element={<StudioPage />} />
